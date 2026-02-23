@@ -1,0 +1,194 @@
+{
+  "total_markets": 31,
+  "btc_count": 27,
+  "eth_count": 3,
+  "sol_count": 1,
+  "markets": [
+    {
+      "id": "ca246be8-2701-4904-a277-d6eb3cd6053a",
+      "question": "Bitcoin Up or Down - February 17, 3:05PM-3:10PM ET",
+      "resolves_at": "2026-02-17 20:10:00Z",
+      "status": "active"
+    },
+    {
+      "id": "c17f1f74-092d-46b5-85a7-7fcd52459581",
+      "question": "Ethereum Up or Down - February 16, 3:30PM-3:45PM ET",
+      "resolves_at": "2026-02-16 23:59:59Z",
+      "status": "active"
+    },
+    {
+      "id": "58d2cb30-aee5-4ce4-b402-96294630784e",
+      "question": "Bitcoin Up or Down - February 16, 4:45PM-5:00PM ET",
+      "resolves_at": "2026-02-16 22:00:00Z",
+      "status": "active"
+    },
+    {
+      "id": "a2b07fac-3449-4959-89d1-bfbc4b4d7258",
+      "question": "Bitcoin Up or Down - February 16, 4:30PM-4:45PM ET",
+      "resolves_at": "2026-02-16 21:45:00Z",
+      "status": "active"
+    },
+    {
+      "id": "325fe471-1f14-4d3f-8cd6-7268c11f00b6",
+      "question": "Bitcoin Up or Down - February 16, 3:30PM-3:45PM ET",
+      "resolves_at": "2026-02-16 20:45:00Z",
+      "status": "active"
+    },
+    {
+      "id": "74441846-feed-48a4-978a-0eec308271e2",
+      "question": "Bitcoin Up or Down - February 16, 4:50PM-4:55PM ET",
+      "resolves_at": "2026-02-16 21:55:00Z",
+      "status": "active"
+    },
+    {
+      "id": "5a0b8fc4-6699-4dd6-b55a-a48abcb131f9",
+      "question": "Bitcoin Up or Down - February 16, 4:45PM-4:50PM ET",
+      "resolves_at": "2026-02-16 21:50:00Z",
+      "status": "active"
+    },
+    {
+      "id": "5b9c25d4-a54a-4b0e-b7c1-34e1b77cfb7b",
+      "question": "Bitcoin Up or Down - February 16, 4:40PM-4:45PM ET",
+      "resolves_at": "2026-02-16 21:45:00Z",
+      "status": "active"
+    },
+    {
+      "id": "d9760772-bf66-4de5-8fb0-13f3e28338b6",
+      "question": "Bitcoin Up or Down - February 16, 3:15PM-3:30PM ET",
+      "resolves_at": "2026-02-16 20:30:00Z",
+      "status": "active"
+    },
+    {
+      "id": "65ec1d79-9325-481d-884f-ae438591461b",
+      "question": "Bitcoin Up or Down - February 16, 4:35PM-4:40PM ET",
+      "resolves_at": "2026-02-16 21:40:00Z",
+      "status": "active"
+    },
+    {
+      "id": "42a1916d-79d1-4e32-9fbe-7054988815d2",
+      "question": "Bitcoin Up or Down - February 16, 4:30PM-4:35PM ET",
+      "resolves_at": "2026-02-16 21:35:00Z",
+      "status": "active"
+    },
+    {
+      "id": "942d3478-cedf-4874-94e0-d4efe56b66a5",
+      "question": "Bitcoin Up or Down - February 16, 4:15PM-4:20PM ET",
+      "resolves_at": "2026-02-16 21:20:00Z",
+      "status": "active"
+    },
+    {
+      "id": "24fe48a7-bc9d-4893-97ae-8fc952a480e5",
+      "question": "Bitcoin Up or Down - February 16, 3:50PM-3:55PM ET",
+      "resolves_at": "2026-02-16 20:55:00Z",
+      "status": "active"
+    },
+    {
+      "id": "24859d7f-3389-47f8-aadd-83b74b2ae4db",
+      "question": "Bitcoin Up or Down - February 16, 3:30PM-3:35PM ET",
+      "resolves_at": "2026-02-16 20:35:00Z",
+      "status": "active"
+    },
+    {
+      "id": "c8228af1-62c5-438d-91c5-9df18611d006",
+      "question": "Bitcoin Up or Down - February 16, 3:25PM-3:30PM ET",
+      "resolves_at": "2026-02-16 20:30:00Z",
+      "status": "active"
+    },
+    {
+      "id": "fab1ed34-534a-48f4-96bc-d5d43e21fcb3",
+      "question": "Bitcoin Up or Down - February 16, 3:20PM-3:25PM ET",
+      "resolves_at": "2026-02-16 20:25:00Z",
+      "status": "active"
+    },
+    {
+      "id": "a8605f95-fc3b-4353-8934-fa67edbaf2e4",
+      "question": "Bitcoin Up or Down - February 17, 2:55PM-3:00PM ET",
+      "resolves_at": "2026-02-17 20:00:00Z",
+      "status": "active"
+    },
+    {
+      "id": "2d3cc295-376c-43ec-98ed-746e7c58a92c",
+      "question": "Solana Up or Down - February 16, 3PM ET",
+      "resolves_at": "2026-02-16 21:00:00Z",
+      "status": "active"
+    },
+    {
+      "id": "3fc6f421-e1a8-4f3a-8682-fb945bf0b0fb",
+      "question": "Ethereum Up or Down - February 16, 3PM ET",
+      "resolves_at": "2026-02-16 21:00:00Z",
+      "status": "active"
+    },
+    {
+      "id": "d87460a8-3662-4859-aed7-54d5bec6bfb9",
+      "question": "Bitcoin Up or Down - February 16, 3PM ET",
+      "resolves_at": "2026-02-16 21:00:00Z",
+      "status": "active"
+    },
+    {
+      "id": "ef838566-5f87-409d-b9e5-88b837eee442",
+      "question": "Bitcoin Up or Down - February 17, 2:30PM-2:35PM ET",
+      "resolves_at": "2026-02-17 19:35:00Z",
+      "status": "active"
+    },
+    {
+      "id": "38e1df5e-69d2-42b7-9bca-f8e659b0c9a6",
+      "question": "Bitcoin Up or Down - February 17, 2:25PM-2:30PM ET",
+      "resolves_at": "2026-02-17 19:30:00Z",
+      "status": "active"
+    },
+    {
+      "id": "e7f013f2-2f31-4fa6-aaff-61d3112c10d5",
+      "question": "Bitcoin Up or Down - February 17, 2:20PM-2:25PM ET",
+      "resolves_at": "2026-02-17 19:25:00Z",
+      "status": "active"
+    },
+    {
+      "id": "f7f57ff5-7c9f-4963-bf6e-5f9c7a6ffdcd",
+      "question": "Bitcoin Up or Down - February 17, 2:15PM-2:20PM ET",
+      "resolves_at": "2026-02-17 19:20:00Z",
+      "status": "active"
+    },
+    {
+      "id": "2091c425-9fa4-4ffc-973c-8e14797fa194",
+      "question": "Bitcoin Up or Down - February 17, 2:05PM-2:10PM ET",
+      "resolves_at": "2026-02-17 19:10:00Z",
+      "status": "active"
+    },
+    {
+      "id": "0d0881ae-0c10-4a89-9743-8a3e75027ab8",
+      "question": "Bitcoin Up or Down - February 17, 2:00PM-2:05PM ET",
+      "resolves_at": "2026-02-17 19:05:00Z",
+      "status": "active"
+    },
+    {
+      "id": "f62cb662-33c8-4412-8bed-266a23e3e8f3",
+      "question": "Bitcoin Up or Down - February 17, 1:45PM-1:50PM ET",
+      "resolves_at": "2026-02-17 18:50:00Z",
+      "status": "active"
+    },
+    {
+      "id": "38dce272-e92d-4f23-8a30-ebb2fc81bd1c",
+      "question": "Ethereum Up or Down - February 16, 2PM ET",
+      "resolves_at": "2026-02-16 23:59:59Z",
+      "status": "active"
+    },
+    {
+      "id": "68f09da1-35a7-4b3f-9abf-040e911444ad",
+      "question": "Bitcoin Up or Down - February 17, 1:30PM-1:35PM ET",
+      "resolves_at": "2026-02-17 18:35:00Z",
+      "status": "active"
+    },
+    {
+      "id": "aa80d459-7c34-4205-99b3-71246133f078",
+      "question": "Bitcoin Up or Down - February 17, 1:25PM-1:30PM ET",
+      "resolves_at": "2026-02-17 18:30:00Z",
+      "status": "active"
+    },
+    {
+      "id": "ebc1b689-2b18-4443-9570-3ac8828518ce",
+      "question": "Bitcoin Up or Down - February 17, 1:20PM-1:25PM ET",
+      "resolves_at": "2026-02-17 18:25:00Z",
+      "status": "active"
+    }
+  ]
+}

@@ -1,0 +1,227 @@
+"""
+Polymarket Bot Arena Configuration
+"""
+
+import os
+from pathlib import Path
+
+def _load_dotenv() -> None:
+    env_path = Path(__file__).resolve().parent / ".env"
+    if not env_path.exists():
+        return
+
+    try:
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if key.startswith("export "):
+                key = key[len("export ") :].strip()
+            value = value.strip().strip('"').strip("'").strip()
+            if not key:
+                continue
+            if key not in os.environ:
+                os.environ[key] = value
+    except Exception:
+        return
+
+_load_dotenv()
+
+def _env_float(name: str, default: float) -> float:
+    v = os.environ.get(name)
+    if v is None or v == "":
+        return default
+    try:
+        return float(v)
+    except ValueError:
+        return default
+
+
+def _env_int(name: str, default: int) -> int:
+    v = os.environ.get(name)
+    if v is None or v == "":
+        return default
+    try:
+        return int(v)
+    except ValueError:
+        return default
+
+
+# Trading Mode: "paper" (default, uses $SIM) or "live" (real USDC)
+TRADING_MODE = "paper"  # MUST start in paper mode
+
+# Simmer API Configuration
+SIMMER_API_KEY_PATH = Path.home() / ".config/simmer/credentials.json"
+SIMMER_BASE_URL = "https://api.simmer.markets"
+
+# Multi-agent: each bot gets its own Simmer account for independent trading
+# Keys are mapped bot_name -> api_key. Falls back to the default key.
+SIMMER_BOT_KEYS_PATH = Path.home() / ".config/simmer/bot_keys.json"
+
+# Polymarket Direct CLOB (for live trading)
+POLYMARKET_KEY_PATH = Path.home() / ".config/polymarket/credentials.json"
+POLYMARKET_HOST = "https://clob.polymarket.com"
+POLYMARKET_CHAIN_ID = 137  # Polygon
+
+# Database
+_db_env = os.environ.get("BOT_ARENA_DB_PATH")
+DB_PATH = Path(_db_env).expanduser() if _db_env else (Path(__file__).parent / "bot_arena.db")
+
+# Target Markets: Multiple crypto 5-min up/down markets
+TARGET_MARKET_QUERIES = ["btc", "eth", "sol", "ethereum", "solana", "bitcoin"]  # Search terms for market discovery
+TARGET_MARKET_KEYWORDS = ["5 min", "5-min", "5min", "up or down", "up/down"]
+TARGET_MARKET_NAMES = ["Bitcoin Up or Down", "Ethereum Up or Down", "Solana Up or Down"]  # Alternative market names to search
+BTC_5MIN_MARKET_ID = None  # Will be populated by setup.py
+ETH_5MIN_MARKET_ID = None  # Ethereum market ID
+SOL_5MIN_MARKET_ID = None  # Solana market ID
+
+# Risk Limits - Paper Mode (adjusted for $10 bankroll)
+PAPER_MAX_POSITION = _env_float("BOT_ARENA_PAPER_MAX_POSITION", 50.0)
+PAPER_MAX_DAILY_LOSS_PER_BOT = _env_float("BOT_ARENA_PAPER_MAX_DAILY_LOSS_PER_BOT", 2.5)  # 25% of $10 bankroll
+PAPER_MAX_DAILY_LOSS_TOTAL = _env_float("BOT_ARENA_PAPER_MAX_DAILY_LOSS_TOTAL", 6.0)     # 60% of $10 bankroll
+PAPER_STARTING_BALANCE = _env_float("BOT_ARENA_PAPER_STARTING_BALANCE", 10.0)              # $10 default bankroll
+
+# Risk Limits - Live Mode (stricter - proportional to $10k bankroll)
+LIVE_MAX_POSITION = _env_float("BOT_ARENA_LIVE_MAX_POSITION", 10.0)
+LIVE_MAX_DAILY_LOSS_PER_BOT = _env_float("BOT_ARENA_LIVE_MAX_DAILY_LOSS_PER_BOT", 500.0)   # 5% of $10k bankroll
+LIVE_MAX_DAILY_LOSS_TOTAL = _env_float("BOT_ARENA_LIVE_MAX_DAILY_LOSS_TOTAL", 1500.0)   # 15% of $10k bankroll
+
+# Dynamic Loss Limits (based on current capital - for moderate risk profile)
+MAX_LOSS_PCT_PER_BOT = 0.05    # 5% of current bot capital (moderate/conservative)
+MAX_LOSS_PCT_TOTAL = 0.15      # 15% of total current capital (moderate/conservative)
+
+# General Risk Rules (both modes)
+MAX_POSITION_PCT_OF_BALANCE = 0.05  # Never bet more than 5% of balance per trade
+MAX_TOTAL_POSITION_PCT_OF_BALANCE = 0.50  # Never allocate more than 50% of total balance
+MAX_CONSECUTIVE_LOSSES = _env_int("BOT_ARENA_MAX_CONSECUTIVE_LOSSES", 3)  # Pause after 3 consecutive losses
+PAUSE_AFTER_CONSECUTIVE_LOSSES_SECONDS = _env_int("BOT_ARENA_PAUSE_AFTER_CONSECUTIVE_LOSSES", 3600)  # Pause for 1 hour
+MAX_TRADES_PER_HOUR_PER_BOT = 20  # Hard cap to prevent overtrading in 5-min markets
+MIN_TRADE_AMOUNT = _env_float("BOT_ARENA_MIN_TRADE_AMOUNT", 0.01)  # Minimum trade amount
+
+# Evolution Settings
+EVOLUTION_INTERVAL_HOURS = 8  # Safety net: máximo 8h sem evolução
+EVOLUTION_MAX_HOURS = 8  # Máximo de horas para evolução
+EVOLUTION_MIN_HOURS_COOLDOWN = 5  # Tempo mínimo entre evoluções
+EVOLUTION_MIN_TRADES = 80  # Mínimo de trades para evolução
+EVOLUTION_MIN_RESOLVED_TRADES = 80  # Mínimo de trades resolvidos para evolução (padrão recomendado)
+MUTATION_RATE = 0.10
+NUM_BOTS = 5
+SURVIVORS_PER_CYCLE = 2
+
+# Execution Cost Model (used for edge filtering; conservative defaults)
+PAPER_ENTRY_PRICE_BUFFER = _env_float("BOT_ARENA_PAPER_ENTRY_PRICE_BUFFER", 0.010)
+LIVE_ENTRY_PRICE_BUFFER = _env_float("BOT_ARENA_LIVE_ENTRY_PRICE_BUFFER", 0.006)
+PAPER_FEE_RATE = _env_float("BOT_ARENA_PAPER_FEE_RATE", 0.000)
+LIVE_FEE_RATE = _env_float("BOT_ARENA_LIVE_FEE_RATE", 0.000)
+MIN_EXPECTED_VALUE = _env_float("BOT_ARENA_MIN_EXPECTED_VALUE", 0.015)
+SKIP_RETRY_SECONDS = _env_int("BOT_ARENA_SKIP_RETRY_SECONDS", 45)
+
+# Market timing window (avoid entering too close to close or too far in advance)
+TRADE_MIN_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MIN_TTE_SECONDS", 30)
+TRADE_MAX_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MAX_TTE_SECONDS", 8 * 60)
+
+# Online edge model
+MODEL_LR = 0.05
+MODEL_L2 = 1e-4
+
+# Signal Feed Settings
+BINANCE_WS_URL = "wss://stream.binance.com:9443/ws"
+PRICE_UPDATE_INTERVAL_SEC = 1  # Real-time price updates
+
+# Copy Trading Settings
+COPYTRADING_ENABLED = True
+COPYTRADING_MAX_WALLETS_TO_TRACK = 10
+COPYTRADING_POSITION_SIZE_FRACTION = 0.5  # Copy 50% of whale's position size
+
+# Dashboard Settings
+DASHBOARD_PORT = 8510
+DASHBOARD_HOST = "127.0.0.1"
+
+# Logging
+LOG_DIR = Path(__file__).parent / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+
+# Sizing and diversity
+KELLY_FRACTION = _env_float("BOT_ARENA_KELLY_FRACTION", 0.5)
+DIVERSITY_PENALTY = _env_float("BOT_ARENA_DIVERSITY_PENALTY", 0.15)
+
+
+def get_current_mode():
+    """Get current trading mode"""
+    return TRADING_MODE
+
+
+def get_max_position():
+    """Get max position size based on current mode"""
+    return LIVE_MAX_POSITION if TRADING_MODE == "live" else PAPER_MAX_POSITION
+
+
+def get_max_daily_loss_per_bot():
+    """Get max daily loss per bot based on current mode"""
+    return LIVE_MAX_DAILY_LOSS_PER_BOT if TRADING_MODE == "live" else PAPER_MAX_DAILY_LOSS_PER_BOT
+
+
+def get_max_daily_loss_total():
+    """Get max total daily loss based on current mode"""
+    return LIVE_MAX_DAILY_LOSS_TOTAL if TRADING_MODE == "live" else PAPER_MAX_DAILY_LOSS_TOTAL
+
+
+def get_venue():
+    """Get trading venue based on current mode"""
+    return "polymarket" if TRADING_MODE == "live" else "simmer"
+
+def get_entry_price_buffer():
+    return LIVE_ENTRY_PRICE_BUFFER if TRADING_MODE == "live" else PAPER_ENTRY_PRICE_BUFFER
+
+
+def get_fee_rate():
+    return LIVE_FEE_RATE if TRADING_MODE == "live" else PAPER_FEE_RATE
+
+
+def set_trading_mode(mode: str):
+    """
+    Set trading mode (paper or live)
+    NOTE: This only updates the runtime config, not the config.py file
+    For persistence, use the dashboard or manually edit config.py
+    """
+    global TRADING_MODE
+    if mode not in ["paper", "live"]:
+        raise ValueError("Mode must be 'paper' or 'live'")
+    TRADING_MODE = mode
+    return TRADING_MODE
+
+
+def get_total_position_limit():
+    """Get total position limit as percentage of balance (50%)"""
+    return MAX_TOTAL_POSITION_PCT_OF_BALANCE
+
+
+def get_dynamic_max_loss_per_bot(bot_name, mode=None):
+    """Get dynamic max loss per bot based on current capital (5% of current capital)"""
+    import db
+    if mode is None:
+        mode = TRADING_MODE
+    current_capital = db.get_bot_current_capital(bot_name, mode)
+    return current_capital * MAX_LOSS_PCT_PER_BOT
+
+
+def get_dynamic_max_loss_total(mode=None):
+    """Get dynamic max total loss based on current total capital (15% of total capital)"""
+    import db
+    if mode is None:
+        mode = TRADING_MODE
+    total_capital = db.get_total_current_capital(mode)
+    return total_capital * MAX_LOSS_PCT_TOTAL
+
+
+def get_min_trade_amount():
+    """Get minimum trade amount"""
+    return MIN_TRADE_AMOUNT
+
+
+# Telegram Configuration
+TELEGRAM_BOT_TOKEN = (os.environ.get("TELEGRAM_BOT_TOKEN", "") or "").strip()  # Get from BotFather
+TELEGRAM_CHAT_ID = (os.environ.get("TELEGRAM_CHAT_ID", "") or "").strip()      # Your chat ID
+TELEGRAM_ENABLED = os.environ.get("TELEGRAM_ENABLED", "true").lower() == "true"

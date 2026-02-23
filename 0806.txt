@@ -1,0 +1,320 @@
+PS C:\Users\luizf\Documents\polymarket\polymarket-bot-arena-main> .\start-arena.ps1
+🔍 Buscando Bankroll em http://127.0.0.1:8510/api/wallet ...
+DEBUG: Response de http://127.0.0.1:8510/api/wallet (raw body): {"mode":"paper","venue":"simmer","cash_balance_total":9909.473056137173,"virtual_bankroll":10.0,"virtual_equity":11.436382327540572,"virtual_available":10.930178711358801,"virtual_cash":10.930178711358801,"realized_pnl_all_time":1.4363823275405723,"realized_pnl_today":-0.6872789062068418,"accounts":[{"idx":0,"balance":9909.473056137173}],"open_trades":3,"invested_open":0.5062036161817718,"by_bot":[{"bot_name":"mean_reversion-g8-831","open_trades":3,"invested":0.5062036161817718}],"error":null}
+✅ Bankroll obtido de /api/wallet
+===========================================
+Bankroll atual          : $11.4363823275406
+Limite perda por bot    : $1.72  (15%)
+Limite perda global     : $5.72 (50%)
+===========================================
+🚀 Iniciando Arena com server.py em 8510...
+2026-02-18 06:37:07 [arena] INFO: Restored evolution timer: cycle 8, 4.8h since last evolution
+2026-02-18 06:37:07 [arena] INFO: Loaded 20 recent executed trade keys from DB (dedup across restarts)
+2026-02-18 06:37:07 [arena] INFO:   sentiment-g7-896 -> slot_0 (key: ...ad7e722e)
+2026-02-18 06:37:07 [arena] INFO:   momentum-g7-424 -> slot_1 (key: ...ad7e722e)
+2026-02-18 06:37:07 [arena] INFO:   mean_reversion-g8-831 -> slot_2 (key: ...ad7e722e)
+2026-02-18 06:37:07 [arena] INFO:   hybrid-g8-125 -> slot_3 (key: ...ad7e722e)
+2026-02-18 06:37:07 [arena] INFO: Single-account mode: 0 bot keys found (need 4 for independent trading)
+2026-02-18 06:37:07 [arena] INFO: Arena started with 4 bots in paper mode
+2026-02-18 06:37:07 [arena] INFO: Bots: ['sentiment-g7-896', 'momentum-g7-424', 'mean_reversion-g8-831', 'hybrid-g8-125']
+2026-02-18 06:37:07 [arena] INFO: Evolution every 4h
+2026-02-18 06:37:07 [arena] INFO: === Evolution Cycle 9 ===
+2026-02-18 06:37:07 [arena] INFO: Rankings:
+2026-02-18 06:37:07 [arena] INFO:   #1 mean_reversion-g8-831: score=+0.46 P&L=$0.78, WR=50.0%, Trades=14 [SURVIVES]
+2026-02-18 06:37:07 [arena] INFO:   #2 momentum-g7-424: score=+0.36 P&L=$0.31, WR=100.0%, Trades=3 [SURVIVES]
+2026-02-18 06:37:07 [arena] INFO:   #3 sentiment-g7-896: score=+0.00 P&L=$0.00, WR=0.0%, Trades=0 [REPLACED]
+2026-02-18 06:37:07 [arena] INFO:   #4 hybrid-g8-125: score=+0.00 P&L=$0.00, WR=0.0%, Trades=0 [REPLACED]
+2026-02-18 06:37:07 [arena] INFO:   sentiment-g9-311 inherits slot slot_0 from sentiment-g7-896
+2026-02-18 06:37:07 [arena] INFO:   Created sentiment-g9-311 (from momentum-g7-424): {"sentiment_window_min": 5, "bullish_threshold": 0.6, "bearish_threshold": 0.4, "influencer_weight": 2.0, "noise_filter_min_posts": 4, "position_size_pct": 0.0377, "min_confidence": 0.5374, "sentiment
+2026-02-18 06:37:07 [arena] INFO:   hybrid-g9-110 inherits slot slot_3 from hybrid-g8-125
+2026-02-18 06:37:07 [arena] INFO:   Created hybrid-g9-110 (from momentum-g7-424): {"momentum_weight": 0.35, "mean_rev_weight": 0.3674, "sentiment_weight": 0.3, "confidence_threshold": 0.5432, "agreement_bonus": 0.15, "position_size_pct": 0.0404, "min_confidence": 0.5374}
+2026-02-18 06:37:07 [arena] INFO:   Post-evolution: momentum-g7-424 (momentum) slot=slot_1 params_keys=['lookback_candles', 'momentum_threshold', 'position_size_pct', 'min_confidence', 'trend_strength_weight', 'volume_weight']
+2026-02-18 06:37:07 [arena] INFO:   Post-evolution: mean_reversion-g8-831 (mean_reversion) slot=slot_2 params_keys=['lookback_candles', 'bb_std_dev', 'rsi_period', 'rsi_oversold', 'rsi_overbought', 'reversion_threshold', 'position_size_pct', 'min_confidence']
+2026-02-18 06:37:07 [arena] INFO:   Post-evolution: sentiment-g9-311 (sentiment) slot=slot_0 params_keys=['sentiment_window_min', 'bullish_threshold', 'bearish_threshold', 'influencer_weight', 'noise_filter_min_posts', 'position_size_pct', 'min_confidence', 'sentiment_momentum_weight', 'raw_sentiment_weight']
+2026-02-18 06:37:07 [arena] INFO:   Post-evolution: hybrid-g9-110 (hybrid) slot=slot_3 params_keys=['momentum_weight', 'mean_rev_weight', 'sentiment_weight', 'confidence_threshold', 'agreement_bonus', 'position_size_pct', 'min_confidence']
+2026-02-18 06:37:07 [arena] INFO: Resetting daily losses and resuming bots after evolution cycle 9
+2026-02-18 06:37:08 [arena] INFO: Bot momentum-g7-424 resumed trading after evolution
+2026-02-18 06:37:08 [arena] INFO: Bot mean_reversion-g8-831 resumed trading after evolution
+2026-02-18 06:37:08 [arena] INFO: Bot sentiment-g9-311 resumed trading after evolution
+2026-02-18 06:37:08 [arena] INFO: Bot hybrid-g9-110 resumed trading after evolution
+2026-02-18 06:37:08 [arena] INFO:   momentum-g7-424 -> slot_1 (key: ...ad7e722e)
+2026-02-18 06:37:08 [arena] INFO:   mean_reversion-g8-831 -> slot_2 (key: ...ad7e722e)
+2026-02-18 06:37:08 [arena] INFO:   sentiment-g9-311 -> slot_0 (key: ...ad7e722e)
+2026-02-18 06:37:08 [arena] INFO:   hybrid-g9-110 -> slot_3 (key: ...ad7e722e)
+2026-02-18 06:37:12 [arena] INFO: Discovered markets - BTC: 43, ETH: 2, SOL: 0
+2026-02-18 06:37:12 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 06:37:14 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.727 mkt=0.736 ev_yes=-2.58% ev_no=-0.26%')
+2026-02-18 06:38:18 [arena] INFO: Discovered markets - BTC: 43, ETH: 2, SOL: 0
+2026-02-18 06:38:18 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 06:38:20 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.765 mkt=0.773 ev_yes=-2.39% ev_no=-0.53%')
+2026-02-18 06:39:23 [arena] INFO: Discovered markets - BTC: 43, ETH: 2, SOL: 0
+2026-02-18 06:39:23 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 06:39:24 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.706 mkt=0.715 ev_yes=-2.58% ev_no=-0.45%')
+2026-02-18 06:40:41 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 06:40:56 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=active&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51B32210>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 06:40:56 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 06:41:43 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 06:41:59 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 06:41:59 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 06:42:44 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=resolved&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51B320D0>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 06:42:59 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=active&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51B32350>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 06:42:59 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 06:43:47 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 06:43:59 [arena] ERROR: Market discovery error: ('Connection aborted.', ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None))
+2026-02-18 06:43:59 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 06:44:44 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=resolved&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51B339D0>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 06:44:48 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:44:48 [arena] INFO: Trading on 3 markets this cycle (of 45 discovered)
+2026-02-18 06:44:53 [bots.base_bot] ERROR: [mean_reversion-g8-831] Trade exception: ('Connection aborted.', ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None))
+2026-02-18 06:45:07 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.13 on Bitcoin Up or Down - February 18, 4:45AM-4:50AM ET
+2026-02-18 06:45:07 [arena] INFO: [mean_reversion-g8-831] YES $0.13 (conf=0.07) on Bitcoin Up or Down - February 18, 4:45AM-4:50AM ET
+2026-02-18 06:45:18 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.13 on Bitcoin Up or Down - February 18, 4:40AM-4:45AM ET
+2026-02-18 06:45:18 [arena] INFO: [mean_reversion-g8-831] YES $0.13 (conf=0.07) on Bitcoin Up or Down - February 18, 4:40AM-4:45AM ET
+2026-02-18 06:45:18 [arena] INFO: Placed 2 new trades this cycle
+2026-02-18 06:46:20 [arena] INFO: Resolved 1 trades (1 pending matched 1 resolved markets)
+2026-02-18 06:46:22 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:46:22 [arena] INFO: Trading on 2 markets this cycle (of 45 discovered)
+2026-02-18 06:46:36 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.12 on Bitcoin Up or Down - February 18, 4:50AM-4:55AM ET
+2026-02-18 06:46:36 [arena] INFO: [mean_reversion-g8-831] YES $0.12 (conf=0.05) on Bitcoin Up or Down - February 18, 4:50AM-4:55AM ET
+2026-02-18 06:46:39 [arena] INFO: Placed 1 new trades this cycle
+2026-02-18 06:47:42 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:47:42 [arena] INFO: Trading on 2 markets this cycle (of 45 discovered)
+2026-02-18 06:47:45 [arena] INFO: No trades placed this cycle (decisions=6, skips=6, top_skip='No edge after costs: p_yes=0.480 mkt=0.479 ev_yes=-1.79% ev_no=-2.12%')
+2026-02-18 06:48:46 [arena] INFO: Resolved 1 trades (1 pending matched 1 resolved markets)
+2026-02-18 06:48:48 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:48:48 [arena] INFO: Trading on 2 markets this cycle (of 45 discovered)
+2026-02-18 06:48:50 [arena] INFO: No trades placed this cycle (decisions=6, skips=6, top_skip='No edge after costs: p_yes=0.511 mkt=0.510 ev_yes=-1.80% ev_no=-2.13%')
+2026-02-18 06:49:53 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:49:53 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 06:49:54 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.508 mkt=0.510 ev_yes=-2.39% ev_no=-1.51%')
+2026-02-18 06:50:58 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:50:58 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 06:50:59 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.370 mkt=0.365 ev_yes=-1.43% ev_no=-2.27%')
+2026-02-18 06:52:02 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:52:02 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 06:52:03 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.385 mkt=0.378 ev_yes=-0.79% ev_no=-2.68%')
+2026-02-18 06:53:06 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:53:06 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 06:53:08 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.369 mkt=0.364 ev_yes=-1.22% ev_no=-2.39%')
+2026-02-18 06:54:11 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:54:11 [arena] INFO: Trading on 4 markets this cycle (of 45 discovered)
+2026-02-18 06:54:22 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.12 on Bitcoin Up or Down - February 18, 5:10AM-5:15AM ET
+2026-02-18 06:54:22 [arena] INFO: [mean_reversion-g8-831] YES $0.12 (conf=0.06) on Bitcoin Up or Down - February 18, 5:10AM-5:15AM ET
+2026-02-18 06:54:32 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.12 on Bitcoin Up or Down - February 18, 5:05AM-5:10AM ET
+2026-02-18 06:54:32 [arena] INFO: [mean_reversion-g8-831] YES $0.12 (conf=0.06) on Bitcoin Up or Down - February 18, 5:05AM-5:10AM ET
+2026-02-18 06:54:43 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.12 on Bitcoin Up or Down - February 18, 5:00AM-5:05AM ET
+2026-02-18 06:54:43 [arena] INFO: [mean_reversion-g8-831] YES $0.12 (conf=0.06) on Bitcoin Up or Down - February 18, 5:00AM-5:05AM ET
+2026-02-18 06:54:44 [arena] INFO: Placed 3 new trades this cycle
+2026-02-18 06:55:47 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:55:47 [arena] INFO: Trading on 3 markets this cycle (of 45 discovered)
+2026-02-18 06:55:51 [arena] INFO: No trades placed this cycle (decisions=9, skips=9, top_skip='No edge after costs: p_yes=0.508 mkt=0.507 ev_yes=-1.62% ev_no=-2.31%')
+2026-02-18 06:56:54 [arena] INFO: Discovered markets - BTC: 44, ETH: 1, SOL: 0
+2026-02-18 06:56:54 [arena] INFO: Trading on 3 markets this cycle (of 45 discovered)
+2026-02-18 06:56:59 [arena] INFO: No trades placed this cycle (decisions=9, skips=9, top_skip='No edge after costs: p_yes=0.506 mkt=0.507 ev_yes=-2.11% ev_no=-1.80%')
+2026-02-18 06:58:22 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 06:58:37 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=active&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51BF0550>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 06:58:37 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 06:59:24 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 06:59:41 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 06:59:41 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:00:28 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 07:00:43 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=active&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51BF20D0>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 07:00:43 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:01:34 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out.
+2026-02-18 07:01:45 [arena] ERROR: Market discovery error: ("Connection broken: ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None)", ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None))
+2026-02-18 07:01:45 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:02:19 [arena] INFO: Resolved 2 trades (2 pending matched 2 resolved markets)
+2026-02-18 07:02:29 [arena] INFO: Discovered markets - BTC: 43, ETH: 2, SOL: 0
+2026-02-18 07:02:29 [arena] INFO: Trading on 3 markets this cycle (of 45 discovered)
+2026-02-18 07:02:57 [arena] INFO: No trades placed this cycle (decisions=9, skips=9, top_skip='No edge after costs: p_yes=0.498 mkt=0.500 ev_yes=-2.44% ev_no=-1.49%')
+2026-02-18 07:04:12 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=resolved&limit=200 (Caused by SSLError(CertificateError("hostname 'api.simmer.markets' doesn't match '*.up.railway.app'")))
+2026-02-18 07:04:27 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=active&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51B31A90>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 07:04:27 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:05:14 [arena] ERROR: Trade resolution error: ("Connection broken: ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None)", ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None))
+2026-02-18 07:05:30 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 07:05:30 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:06:20 [arena] ERROR: Trade resolution error: ("Connection broken: ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None)", ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None))
+2026-02-18 07:06:39 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out.
+2026-02-18 07:06:39 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:07:26 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 07:07:41 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=active&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51BF0E10>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 07:07:41 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:08:26 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Max retries exceeded with url: /api/sdk/markets?status=resolved&limit=200 (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000025E51BF0B90>, 'Connection to api.simmer.markets timed out. (connect timeout=15)'))
+2026-02-18 07:08:42 [arena] ERROR: Market discovery error: ('Connection aborted.', ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None))
+2026-02-18 07:08:42 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:09:28 [arena] ERROR: Trade resolution error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 07:09:45 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 07:09:45 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:10:22 [arena] INFO: Resolved 1 trades (1 pending matched 1 resolved markets)
+2026-02-18 07:10:39 [arena] ERROR: Market discovery error: HTTPSConnectionPool(host='api.simmer.markets', port=443): Read timed out. (read timeout=15)
+2026-02-18 07:10:39 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:11:20 [arena] ERROR: Market discovery error: ("Connection broken: ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None)", ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None))
+2026-02-18 07:11:20 [arena] INFO: Discovered markets - BTC: 0, ETH: 0, SOL: 0
+2026-02-18 07:11:53 [arena] ERROR: Trade resolution error: ('Connection aborted.', ConnectionResetError(10054, 'Foi forçado o cancelamento de uma conexão existente pelo host remoto', None, 10054, None))
+2026-02-18 07:12:02 [arena] INFO: Discovered markets - BTC: 43, ETH: 2, SOL: 0
+2026-02-18 07:12:02 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 07:12:04 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.643 mkt=0.650 ev_yes=-2.53% ev_no=-0.91%')
+2026-02-18 07:13:07 [arena] INFO: Discovered markets - BTC: 43, ETH: 2, SOL: 0
+2026-02-18 07:13:07 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 07:13:08 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.689 mkt=0.698 ev_yes=-2.60% ev_no=-0.51%')
+2026-02-18 07:14:11 [arena] INFO: Discovered markets - BTC: 43, ETH: 2, SOL: 0
+2026-02-18 07:14:11 [arena] INFO: Trading on 4 markets this cycle (of 45 discovered)
+2026-02-18 07:14:21 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.16 on Bitcoin Up or Down - February 18, 5:35AM-5:40AM ET
+2026-02-18 07:14:21 [arena] INFO: [mean_reversion-g8-831] YES $0.16 (conf=0.08) on Bitcoin Up or Down - February 18, 5:35AM-5:40AM ET
+2026-02-18 07:14:33 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.16 on Bitcoin Up or Down - February 18, 5:30AM-5:35AM ET
+2026-02-18 07:14:33 [arena] INFO: [mean_reversion-g8-831] YES $0.16 (conf=0.08) on Bitcoin Up or Down - February 18, 5:30AM-5:35AM ET
+2026-02-18 07:14:48 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.13 on Bitcoin Up or Down - February 18, 5:15AM-5:20AM ET
+2026-02-18 07:14:48 [arena] INFO: [mean_reversion-g8-831] YES $0.13 (conf=0.08) on Bitcoin Up or Down - February 18, 5:15AM-5:20AM ET
+2026-02-18 07:14:49 [arena] INFO: Placed 3 new trades this cycle
+2026-02-18 07:15:53 [arena] INFO: Discovered markets - BTC: 46, ETH: 2, SOL: 0
+2026-02-18 07:15:53 [arena] INFO: Trading on 4 markets this cycle (of 48 discovered)
+2026-02-18 07:16:04 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.15 on Bitcoin Up or Down - February 18, 5:40AM-5:45AM ET
+2026-02-18 07:16:04 [arena] INFO: [mean_reversion-g8-831] YES $0.15 (conf=0.08) on Bitcoin Up or Down - February 18, 5:40AM-5:45AM ET
+2026-02-18 07:16:09 [arena] INFO: Placed 1 new trades this cycle
+2026-02-18 07:17:11 [arena] INFO: Resolved 2 trades (2 pending matched 2 resolved markets)
+2026-02-18 07:17:12 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:17:12 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:17:18 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.504 mkt=0.505 ev_yes=-2.15% ev_no=-1.76%')
+2026-02-18 07:18:21 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:18:21 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:18:28 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.504 mkt=0.505 ev_yes=-2.19% ev_no=-1.73%')
+2026-02-18 07:19:31 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:19:31 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:19:37 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.504 mkt=0.505 ev_yes=-2.05% ev_no=-1.87%')
+2026-02-18 07:20:41 [arena] INFO: Discovered markets - BTC: 45, ETH: 2, SOL: 0
+2026-02-18 07:20:41 [arena] INFO: Trading on 4 markets this cycle (of 47 discovered)
+2026-02-18 07:20:51 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.14 on Bitcoin Up or Down - February 18, 5:45AM-5:50AM ET
+2026-02-18 07:20:51 [arena] INFO: [mean_reversion-g8-831] YES $0.14 (conf=0.08) on Bitcoin Up or Down - February 18, 5:45AM-5:50AM ET
+2026-02-18 07:20:55 [arena] INFO: Placed 1 new trades this cycle
+2026-02-18 07:21:59 [arena] INFO: Discovered markets - BTC: 45, ETH: 2, SOL: 0
+2026-02-18 07:21:59 [arena] INFO: Trading on 4 markets this cycle (of 47 discovered)
+2026-02-18 07:22:05 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.505 mkt=0.505 ev_yes=-2.02% ev_no=-1.90%')
+2026-02-18 07:23:08 [arena] INFO: Discovered markets - BTC: 45, ETH: 2, SOL: 0
+2026-02-18 07:23:08 [arena] INFO: Trading on 4 markets this cycle (of 47 discovered)
+2026-02-18 07:23:14 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.500 mkt=0.500 ev_yes=-2.04% ev_no=-1.88%')
+2026-02-18 07:24:17 [arena] INFO: Discovered markets - BTC: 45, ETH: 2, SOL: 0
+2026-02-18 07:24:17 [arena] INFO: Trading on 4 markets this cycle (of 47 discovered)
+2026-02-18 07:24:23 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.506 mkt=0.505 ev_yes=-1.74% ev_no=-2.18%')
+2026-02-18 07:25:26 [arena] INFO: Discovered markets - BTC: 45, ETH: 2, SOL: 0
+2026-02-18 07:25:26 [arena] INFO: Trading on 5 markets this cycle (of 47 discovered)
+2026-02-18 07:25:37 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.57 on Bitcoin Up or Down - February 18, 5:50AM-5:55AM ET
+2026-02-18 07:25:37 [arena] INFO: [mean_reversion-g8-831] YES $0.57 (conf=0.22) on Bitcoin Up or Down - February 18, 5:50AM-5:55AM ET
+2026-02-18 07:25:43 [arena] INFO: Placed 1 new trades this cycle
+2026-02-18 07:26:46 [arena] INFO: Discovered markets - BTC: 46, ETH: 2, SOL: 0
+2026-02-18 07:26:46 [arena] INFO: Trading on 5 markets this cycle (of 48 discovered)
+2026-02-18 07:26:54 [arena] INFO: No trades placed this cycle (decisions=15, skips=15, top_skip='No edge after costs: p_yes=0.493 mkt=0.495 ev_yes=-2.49% ev_no=-1.45%')
+2026-02-18 07:27:57 [arena] INFO: Discovered markets - BTC: 46, ETH: 2, SOL: 0
+2026-02-18 07:27:57 [arena] INFO: Trading on 5 markets this cycle (of 48 discovered)
+2026-02-18 07:28:04 [arena] INFO: No trades placed this cycle (decisions=15, skips=15, top_skip='No edge after costs: p_yes=0.497 mkt=0.495 ev_yes=-1.63% ev_no=-2.29%')
+2026-02-18 07:29:06 [arena] INFO: Expired 1 stale trades (>1h old, never resolved)
+2026-02-18 07:29:08 [arena] INFO: Discovered markets - BTC: 46, ETH: 2, SOL: 0
+2026-02-18 07:29:08 [arena] INFO: Trading on 5 markets this cycle (of 48 discovered)
+2026-02-18 07:29:16 [arena] INFO: No trades placed this cycle (decisions=15, skips=15, top_skip='No edge after costs: p_yes=0.495 mkt=0.495 ev_yes=-2.01% ev_no=-1.91%')
+2026-02-18 07:30:20 [arena] INFO: Discovered markets - BTC: 46, ETH: 2, SOL: 0
+2026-02-18 07:30:20 [arena] INFO: Trading on 5 markets this cycle (of 48 discovered)
+2026-02-18 07:30:27 [arena] INFO: No trades placed this cycle (decisions=15, skips=15, top_skip='No edge after costs: p_yes=0.497 mkt=0.495 ev_yes=-1.63% ev_no=-2.28%')
+2026-02-18 07:31:31 [arena] INFO: Discovered markets - BTC: 46, ETH: 2, SOL: 0
+2026-02-18 07:31:31 [arena] INFO: Trading on 5 markets this cycle (of 48 discovered)
+2026-02-18 07:31:38 [arena] INFO: No trades placed this cycle (decisions=15, skips=15, top_skip='No edge after costs: p_yes=0.501 mkt=0.505 ev_yes=-2.63% ev_no=-1.28%')
+2026-02-18 07:32:40 [arena] INFO: Resolved 2 trades (2 pending matched 2 resolved markets)
+2026-02-18 07:32:42 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:32:42 [arena] INFO: Trading on 5 markets this cycle (of 46 discovered)
+2026-02-18 07:32:50 [arena] INFO: No trades placed this cycle (decisions=15, skips=15, top_skip='No edge after costs: p_yes=0.507 mkt=0.505 ev_yes=-1.61% ev_no=-2.31%')
+2026-02-18 07:33:53 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:33:53 [arena] INFO: Trading on 5 markets this cycle (of 46 discovered)
+2026-02-18 07:34:02 [arena] INFO: No trades placed this cycle (decisions=15, skips=15, top_skip='No edge after costs: p_yes=0.505 mkt=0.507 ev_yes=-2.28% ev_no=-1.64%')
+2026-02-18 07:35:05 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:35:05 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:35:12 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.503 mkt=0.507 ev_yes=-2.73% ev_no=-1.17%')
+2026-02-18 07:36:15 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:36:15 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:36:21 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.518 mkt=0.520 ev_yes=-2.20% ev_no=-1.70%')
+2026-02-18 07:37:24 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:37:24 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:37:30 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.506 mkt=0.505 ev_yes=-1.74% ev_no=-2.18%')
+2026-02-18 07:38:34 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:38:34 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:38:41 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.504 mkt=0.505 ev_yes=-2.07% ev_no=-1.85%')
+2026-02-18 07:39:45 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:39:45 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:39:51 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.505 mkt=0.505 ev_yes=-2.02% ev_no=-1.91%')
+2026-02-18 07:40:54 [arena] INFO: Discovered markets - BTC: 44, ETH: 2, SOL: 0
+2026-02-18 07:40:54 [arena] INFO: Trading on 4 markets this cycle (of 46 discovered)
+2026-02-18 07:41:03 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.13 on Bitcoin Up or Down - February 18, 6:05AM-6:10AM ET
+2026-02-18 07:41:03 [arena] INFO: [mean_reversion-g8-831] YES $0.13 (conf=0.07) on Bitcoin Up or Down - February 18, 6:05AM-6:10AM ET
+2026-02-18 07:41:09 [arena] INFO: Placed 1 new trades this cycle
+2026-02-18 07:42:12 [arena] INFO: Discovered markets - BTC: 45, ETH: 3, SOL: 0
+2026-02-18 07:42:12 [arena] INFO: Trading on 4 markets this cycle (of 48 discovered)
+2026-02-18 07:42:18 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.505 mkt=0.505 ev_yes=-1.90% ev_no=-2.02%')
+2026-02-18 07:43:21 [arena] INFO: Discovered markets - BTC: 45, ETH: 3, SOL: 0
+2026-02-18 07:43:21 [arena] INFO: Trading on 4 markets this cycle (of 48 discovered)
+2026-02-18 07:43:28 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.500 mkt=0.500 ev_yes=-2.06% ev_no=-1.86%')
+2026-02-18 07:44:32 [arena] INFO: Discovered markets - BTC: 46, ETH: 4, SOL: 0
+2026-02-18 07:44:32 [arena] INFO: Trading on 4 markets this cycle (of 50 discovered)
+2026-02-18 07:44:39 [arena] INFO: No trades placed this cycle (decisions=12, skips=12, top_skip='No edge after costs: p_yes=0.494 mkt=0.500 ev_yes=-3.12% ev_no=-0.80%')
+2026-02-18 07:45:42 [arena] INFO: Discovered markets - BTC: 46, ETH: 4, SOL: 1
+2026-02-18 07:45:42 [arena] INFO: Trading on 3 markets this cycle (of 51 discovered)
+2026-02-18 07:45:47 [arena] INFO: No trades placed this cycle (decisions=9, skips=9, top_skip='No edge after costs: p_yes=0.499 mkt=0.500 ev_yes=-2.17% ev_no=-1.75%')
+2026-02-18 07:46:50 [arena] INFO: Discovered markets - BTC: 46, ETH: 4, SOL: 1
+2026-02-18 07:46:50 [arena] INFO: Trading on 3 markets this cycle (of 51 discovered)
+2026-02-18 07:46:55 [arena] INFO: No trades placed this cycle (decisions=9, skips=9, top_skip='No edge after costs: p_yes=0.501 mkt=0.500 ev_yes=-1.79% ev_no=-2.13%')
+2026-02-18 07:47:58 [arena] INFO: Discovered markets - BTC: 46, ETH: 4, SOL: 1
+2026-02-18 07:47:58 [arena] INFO: Trading on 3 markets this cycle (of 51 discovered)
+2026-02-18 07:48:03 [arena] INFO: No trades placed this cycle (decisions=9, skips=9, top_skip='No edge after costs: p_yes=0.506 mkt=0.505 ev_yes=-1.84% ev_no=-2.08%')
+2026-02-18 07:49:06 [arena] INFO: Discovered markets - BTC: 46, ETH: 4, SOL: 1
+2026-02-18 07:49:06 [arena] INFO: Trading on 3 markets this cycle (of 51 discovered)
+2026-02-18 07:49:11 [arena] INFO: No trades placed this cycle (decisions=9, skips=9, top_skip='No edge after costs: p_yes=0.500 mkt=0.500 ev_yes=-1.95% ev_no=-1.97%')
+2026-02-18 07:50:15 [arena] INFO: Discovered markets - BTC: 46, ETH: 4, SOL: 1
+2026-02-18 07:50:15 [arena] INFO: Trading on 2 markets this cycle (of 51 discovered)
+2026-02-18 07:50:19 [arena] INFO: No trades placed this cycle (decisions=6, skips=6, top_skip='No edge after costs: p_yes=0.501 mkt=0.500 ev_yes=-1.92% ev_no=-2.01%')
+2026-02-18 07:51:22 [arena] INFO: Discovered markets - BTC: 46, ETH: 4, SOL: 1
+2026-02-18 07:51:22 [arena] INFO: Trading on 2 markets this cycle (of 51 discovered)
+2026-02-18 07:51:25 [arena] INFO: No trades placed this cycle (decisions=6, skips=6, top_skip='No edge after costs: p_yes=0.501 mkt=0.500 ev_yes=-1.79% ev_no=-2.13%')
+2026-02-18 07:52:28 [arena] INFO: Resolved 1 trades (1 pending matched 1 resolved markets)
+2026-02-18 07:52:29 [arena] INFO: Discovered markets - BTC: 45, ETH: 4, SOL: 1
+2026-02-18 07:52:29 [arena] INFO: Trading on 2 markets this cycle (of 50 discovered)
+2026-02-18 07:52:32 [arena] INFO: No trades placed this cycle (decisions=6, skips=6, top_skip='No edge after costs: p_yes=0.502 mkt=0.505 ev_yes=-2.54% ev_no=-1.37%')
+2026-02-18 07:53:35 [arena] INFO: Discovered markets - BTC: 43, ETH: 4, SOL: 1
+2026-02-18 07:53:35 [arena] INFO: Trading on 2 markets this cycle (of 48 discovered)
+2026-02-18 07:53:37 [arena] INFO: No trades placed this cycle (decisions=6, skips=6, top_skip='No edge after costs: p_yes=0.506 mkt=0.505 ev_yes=-1.68% ev_no=-2.25%')
+2026-02-18 07:54:40 [arena] INFO: Resolved 2 trades (2 pending matched 2 resolved markets)
+2026-02-18 07:54:41 [arena] INFO: Discovered markets - BTC: 43, ETH: 4, SOL: 1
+2026-02-18 07:54:41 [arena] INFO: Trading on 2 markets this cycle (of 48 discovered)
+2026-02-18 07:54:53 [bots.base_bot] INFO: [momentum-g7-424] Paper trade: yes $0.12 on Bitcoin Up or Down - February 18, 5:50AM-5:55AM ET
+2026-02-18 07:54:53 [arena] INFO: [momentum-g7-424] YES $0.12 (conf=0.04) on Bitcoin Up or Down - February 18, 5:50AM-5:55AM ET
+2026-02-18 07:54:53 [arena] INFO: Placed 1 new trades this cycle
+2026-02-18 07:55:56 [arena] INFO: Discovered markets - BTC: 43, ETH: 3, SOL: 1
+2026-02-18 07:55:56 [arena] INFO: Trading on 1 markets this cycle (of 47 discovered)
+2026-02-18 07:55:57 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.505 mkt=0.505 ev_yes=-1.89% ev_no=-2.03%')
+2026-02-18 07:56:59 [arena] INFO: Resolved 1 trades (1 pending matched 1 resolved markets)
+2026-02-18 07:57:00 [arena] INFO: Discovered markets - BTC: 42, ETH: 3, SOL: 1
+2026-02-18 07:57:00 [arena] INFO: Trading on 1 markets this cycle (of 46 discovered)
+2026-02-18 07:57:02 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.503 mkt=0.505 ev_yes=-2.31% ev_no=-1.61%')
+2026-02-18 07:58:04 [arena] INFO: Discovered markets - BTC: 42, ETH: 3, SOL: 1
+2026-02-18 07:58:04 [arena] INFO: Trading on 1 markets this cycle (of 46 discovered)
+2026-02-18 07:58:06 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.506 mkt=0.505 ev_yes=-1.83% ev_no=-2.09%')
+2026-02-18 07:59:08 [arena] INFO: Discovered markets - BTC: 42, ETH: 3, SOL: 1
+2026-02-18 07:59:08 [arena] INFO: Trading on 1 markets this cycle (of 46 discovered)
+2026-02-18 07:59:09 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.504 mkt=0.505 ev_yes=-2.08% ev_no=-1.84%')
+2026-02-18 08:00:11 [arena] INFO: Resolved 2 trades (2 pending matched 1 resolved markets)
+2026-02-18 08:00:13 [arena] INFO: Discovered markets - BTC: 42, ETH: 2, SOL: 1
+2026-02-18 08:00:13 [arena] INFO: Trading on 1 markets this cycle (of 45 discovered)
+2026-02-18 08:00:14 [arena] INFO: No trades placed this cycle (decisions=3, skips=3, top_skip='No edge after costs: p_yes=0.506 mkt=0.505 ev_yes=-1.81% ev_no=-2.12%')
+2026-02-18 08:01:17 [arena] INFO: Discovered markets - BTC: 42, ETH: 2, SOL: 1
+2026-02-18 08:01:17 [arena] INFO: Trading on 2 markets this cycle (of 45 discovered)
+2026-02-18 08:01:26 [bots.base_bot] INFO: [mean_reversion-g8-831] Paper trade: yes $0.12 on Bitcoin Up or Down - February 18, 6:10AM-6:15AM ET
+2026-02-18 08:01:26 [arena] INFO: [mean_reversion-g8-831] YES $0.12 (conf=0.05) on Bitcoin Up or Down - February 18, 6:10AM-6:15AM ET
+2026-02-18 08:01:29 [arena] INFO: Placed 1 new trades this cycle
+2026-02-18 08:02:33 [arena] INFO: Discovered markets - BTC: 42, ETH: 2, SOL: 1
+2026-02-18 08:02:33 [arena] INFO: Trading on 2 markets this cycle (of 45 discovered)
+2026-02-18 08:02:36 [arena] INFO: No trades placed this cycle (decisions=6, skips=6, top_skip='No edge after costs: p_yes=0.506 mkt=0.507 ev_yes=-2.03% ev_no=-1.89%')
+2026-02-18 08:03:40 [arena] INFO: Discovered markets - BTC: 42, ETH: 2, SOL: 1
+2026-02-18 08:03:40 [arena] INFO: Trading on 2 markets this cycle (of 45 discovered)
+2026-02-18 08:03:50 [bots.base_bot] INFO: [momentum-g7-424] Paper trade: yes $0.12 on Bitcoin Up or Down - February 18, 6:05AM-6:10AM ET
+2026-02-18 08:03:50 [arena] INFO: [momentum-g7-424] YES $0.12 (conf=0.05) on Bitcoin Up or Down - February 18, 6:05AM-6:10AM ET
+2026-02-18 08:03:50 [arena] INFO: Placed 1 new trades this cycle
+2026-02-18 08:04:53 [arena] INFO: Discovered markets - BTC: 42, ETH: 2, SOL: 1
+2026-02-18 08:04:53 [arena] INFO: Trading on 2 markets this cycle (of 45 discovered)
+2026-02-18 08:04:55 [arena] INFO: No trades placed this cycle (decisions=5, skips=5, top_skip='No edge after costs: p_yes=0.505 mkt=0.507 ev_yes=-2.34% ev_no=-1.57%')
+2026-02-18 08:06:02 [arena] INFO: Discovered markets - BTC: 43, ETH: 1, SOL: 1
+2026-02-18 08:06:02 [arena] INFO: Trading on 2 markets this cycle (of 45 discovered)
