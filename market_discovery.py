@@ -93,15 +93,54 @@ def _is_rejected_short_crypto(market, now):
     tte_seconds = max(0, int((end_dt - now).total_seconds()))
     return has_asset and has_short and tte_seconds <= 3600
 
-def _map_category_to_priority(category):
+def _map_category_to_priority(category, question=''):
     """Mapeia categorias do Polymarket para nossas categorias prioritárias"""
-    if not category:
+    # Se não houver categoria ou for "unknown", inferir pela pergunta
+    if not category or category == "unknown":
+        question_lower = question.lower() if question else ''
+        
+        # FINANCEIROS/MACRO (PRIORIDADE MÁXIMA)
+        if any(word in question_lower for word in [
+            'fed', 'federal reserve', 'interest rate', 'inflation', 'gdp', 'unemployment', 'recession',
+            'stock market', 'dow jones', 'nasdaq', 'sp500', 's&p 500', 'oil', 'gold', 'silver',
+            'dollar', 'euro', 'yuan', 'trade war', 'tariff', 'bond', 'yield', 'treasury', 'fomc',
+            'rate', 'economic', 'economy', 'market crash', 'bull market', 'bear market', 'deflation',
+            'quantitative easing', 'qe', 'mortgage', 'housing', 'real estate', 'commodity', 'forex',
+            'currency', 'exchange rate', 'central bank', 'monetary', 'fiscal', 'budget', 'debt',
+            'stock', 'shares', 'equity', 'dividend', 'earnings', 'revenue', 'profit', 'loss'
+        ]):
+            return "finance"
+        
+        # Política
+        elif any(word in question_lower for word in ['trump', 'biden', 'election', 'president', 'senate', 'house', 'republican', 'democrat', 'vote', 'candidate', 'primary', 'impeach', 'resign', 'minister', 'prime minister', 'parliament', 'congress']):
+            return "politics"
+        
+        # Crypto
+        elif any(word in question_lower for word in ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency', 'blockchain', 'defi', 'nft']):
+            return "crypto"
+        
+        # Esportes
+        elif any(word in question_lower for word in ['nba', 'nfl', 'mlb', 'soccer', 'football', 'basketball', 'baseball', 'champions league', 'premier league', 'la liga', 'serie a', 'bundesliga', 'world cup', 'olympics', 'mvp', 'win', 'champion', 'tournament', 'masters', 'golf']):
+            return "sports"
+        
+        # Tecnologia
+        elif any(word in question_lower for word in ['gpt', 'ai', 'artificial intelligence', 'tesla', 'spacex', 'meta', 'facebook', 'google', 'apple', 'microsoft', 'amazon', 'tech', 'technology', 'silicon valley', 'startup']):
+            return "tech"
+        
+        # Geopolítica/Guerra (muitas vezes categorizada como política)
+        elif any(word in question_lower for word in ['war', 'invasion', 'china', 'russia', 'ukraine', 'taiwan', 'ceasefire', 'peace', 'nato', 'un', 'security council']):
+            return "politics"
+        
         return "unknown"
     
     category = category.lower()
     
-    # Mapeamento direto
-    if "politics" in category or "us-politics" in category or "election" in category:
+    # Mapeamento direto - FINANCEIROS PRIMEIRO
+    if "finance" in category or "financial" in category or "economic" in category or "economy" in category:
+        return "finance"
+    elif "macro" in category or "markets" in category or "trading" in category:
+        return "finance"
+    elif "politics" in category or "us-politics" in category or "election" in category:
         return "politics"
     elif "crypto" in category or "bitcoin" in category or "ethereum" in category:
         return "crypto"
@@ -109,8 +148,6 @@ def _map_category_to_priority(category):
         return "sports"
     elif "tech" in category or "technology" in category:
         return "tech"
-    elif "economy" in category or "macro" in category or "finance" in category:
-        return "macro"
     
     # Categorias que podem conter política
     elif "affairs" in category or "news" in category or "current" in category:
@@ -120,91 +157,99 @@ def _map_category_to_priority(category):
     elif "business" in category or "companies" in category:
         return "tech"
     
-    # Categorias que podem conter macro
-    elif "markets" in category or "trading" in category:
-        return "macro"
+    # Categorias que podem conter macro (agora mapeadas para finance)
+    elif "economy" in category or "macro" in category:
+        return "finance"
     
     return category
 
 def filter_markets(markets):
-    """Filtra mercados com critérios v3.0"""
+    """Filtra mercados com base em whitelist/blacklist de texto - apenas ativos financeiros reais"""
     qualified_markets = []
     now = datetime.now(timezone.utc)
 
-    # Usar valores do config (já atualizados)
+    # Usar valores do config
     min_volume = getattr(config, "MIN_MARKET_VOLUME", 50000)
     max_spread = getattr(config, "MAX_MARKET_SPREAD", 0.05)
-    min_hours = getattr(config, "MIN_TIME_TO_RESOLUTION", 6)
-    max_hours = getattr(config, "MAX_TIME_TO_RESOLUTION", 45 * 24)
-    priority_categories = getattr(config, "PRIORITY_CATEGORIES", ["politics", "crypto", "sports", "macro", "tech"])
+    min_liquidity = getattr(config, "MIN_LIQUIDITY", 0.0)
 
-    logging.info("Filtering markets with the following criteria:")
+    # Definir whitelist e blacklist baseadas em texto
+    whitelist_crypto = ["bitcoin", "btc", "ethereum", "eth", "solana", "sol"]
+    whitelist_macro = ["fed", "inflation", "interest rate", "cpi", "gdp", "recession", "treasury"]
+    whitelist_tradfi = ["s&p 500", "nasdaq", "dow jones", "stock", "ipo", "oil", "gold", "silver", "eur", "usd"]
+
+    # LISTA NEGRA: Se tiver uma destas, morre na hora (Segurança extra)
+    BLOCK_KEYWORDS = [
+        # Política
+        'trump', 'biden', 'harris', 'election', 'poll', 'vote', 'senate', 'governor',
+        # Desporto (Expandido para matar o Jordan Spieth)
+        'nba', 'nfl', 'nhl', 'mlb', 'soccer', 'cup', 'game', 'tournament', 'win the', 'championship', 'masters',
+        # Pop Culture / Memes
+        'taylor swift', 'oscar', 'grammy', 'movie', 'gta', 'gta vi', 'rockstar',
+        # Outros
+        'launch', 'airdrop'  # Evita eventos binários de Crypto que não seguem gráfico
+    ]
+
+    logging.info("Filtering markets with financial whitelist/blacklist criteria:")
     logging.info(f"  - Min Volume: ${min_volume:,.0f}")
     logging.info(f"  - Max Spread: {max_spread:.2%}")
-    logging.info(f"  - Time to Resolution: {min_hours}h - {int(max_hours / 24)}d")
-    logging.info(f"  - Priority Categories: {priority_categories}")
+    logging.info(f"  - Min Liquidity: ${min_liquidity:,.0f}")
 
     for market in markets:
         try:
             volume = float(market.get("volume", 0))
-            raw_category = market.get("category", "unknown")
-            end_date_str = market.get("endDate")
-            is_active = True   # forçado true pra teste (remover depois)
-
-            if not end_date_str:   # tirei o "or not is_active"
-                continue
-
-            # Rejeitar mercados de crypto de curto prazo
-            if _is_rejected_short_crypto(market, now):
-                logging.debug(f"  [REJECTED] short-window crypto: {market.get('question')}")
-                continue
-
-            end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
-            time_to_resolution = end_date - now
+            liquidity = market.get("liquidity")
+            if liquidity is None:
+                liquidity = market.get("liquidityNum")
+            if liquidity is None:
+                liquidity = market.get("liquidityClob")
+            try:
+                liquidity = float(liquidity or 0)
+            except Exception:
+                liquidity = 0.0
             
-            # Temporariamente aceitar mercados antigos para teste
-            # if time_to_resolution.total_seconds() < 0:
-            #     logging.debug(f"  [REJECTED] market already resolved: {market.get('question')} (TTE: {time_to_resolution})")
-            #     continue
-                
+            end_date_str = market.get("endDate")
+            question = market.get("question", "").lower()
+
+            if not end_date_str:
+                continue
+
+            # Aplicar filtros de qualidade básicos primeiro
             spread = calculate_spread(market)
             
-            # Mapear categoria
-            mapped_category = _map_category_to_priority(raw_category)
-
-            logging.debug(
-                f"Market: {market.get('question')} | Volume: ${volume:,.0f} | Spread: {spread:.4f} | "
-                f"TTE: {time_to_resolution} | Category: {raw_category} -> {mapped_category} | Active: {is_active}"
-            )
-
-            # Verificar se o mercado está dentro dos critérios
             volume_ok = volume >= min_volume
+            liquidity_ok = liquidity >= min_liquidity
             spread_ok = spread <= max_spread
-            # Temporariamente aceitar mercados antigos para teste
-            # tte_ok = timedelta(hours=min_hours) <= time_to_resolution <= timedelta(hours=max_hours)
-            tte_ok = True  # Aceitar todos os tempos temporariamente
-            category_ok = not priority_categories or mapped_category in priority_categories
+            
+            if not (volume_ok and liquidity_ok and spread_ok):
+                continue
 
-            if volume_ok and spread_ok and tte_ok and category_ok:
-                # Adicionar categoria mapeada ao mercado para referência
-                market["mapped_category"] = mapped_category
-                qualified_markets.append(market)
-                logging.info(f"  [QUALIFIED] {market.get('question')} (Vol ${volume:,.0f}, Spread {spread:.2%}, Cat {mapped_category})")
-            else:
-                # Log detalhado do porquê foi rejeitado (apenas em debug)
-                reasons = []
-                if not volume_ok: reasons.append(f"volume")
-                if not spread_ok: reasons.append(f"spread")
-                if not tte_ok: reasons.append(f"TTE")
-                if not category_ok: reasons.append(f"category")
-                if _is_rejected_short_crypto(market, now): reasons.append(f"crypto_5min")
-                logging.debug(f"  [REJECTED] {reasons}")
+            # Aplicar blacklist de segurança (rejeitar imediatamente se contiver)
+            if any(term in question for term in BLOCK_KEYWORDS):
+                logging.debug(f"  [REJECTED] blacklist match: {market.get('question')}")
+                continue
+
+            # Verificar whitelist - precisa ter pelo menos um termo financeiro
+            whitelist_terms = whitelist_crypto + whitelist_macro + whitelist_tradfi
+            has_financial_term = any(term in question for term in whitelist_terms)
+            
+            if not has_financial_term:
+                logging.debug(f"  [REJECTED] no financial whitelist match: {market.get('question')}")
+                continue
+
+            # Se passou todos os filtros, adicionar à lista qualificada
+            market["mapped_category"] = "financial_asset"
+            qualified_markets.append(market)
+            logging.info(f"  [QUALIFIED] {market.get('question')} (Vol ${volume:,.0f}, Liq ${liquidity:,.0f}, Spread {spread:.2%})")
 
         except Exception as e:
             logging.warning(f"Could not process market {market.get('id', 'N/A')}: {e}")
             continue
 
-    logging.info(f"Found {len(qualified_markets)} qualified markets out of {len(markets)}.")
+    # Ordenar por liquidez decrescente
+    qualified_markets.sort(key=lambda x: float(x.get("liquidity", 0) or 0), reverse=True)
+    
+    logging.info(f"Found {len(qualified_markets)} qualified financial markets out of {len(markets)}.")
     return qualified_markets
 
 def save_qualified_markets(markets, filename="qualified_markets.json"):
