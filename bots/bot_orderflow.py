@@ -394,6 +394,86 @@ class OrderflowBot(BaseBot):
             logger.error(f"Erro ao verificar saída por fluxo: {e}")
             return {"should_exit": False, "reason": "error"}
     
+    def analyze(self, market: dict, signals: dict) -> dict:
+        """Analyze market + signals and return a trade signal.
+        
+        Returns:
+            {
+                "action": "buy" | "sell" | "hold",
+                "side": "yes" | "no",
+                "confidence": 0.0-1.0,
+                "reasoning": "why this trade",
+                "suggested_amount": float,
+            }
+        """
+        try:
+            # Generate signal using existing logic
+            signal_data = self.generate_signal(market)
+            
+            # Convert signal to standard format
+            signal = signal_data.get("signal", 0)
+            confidence = signal_data.get("confidence", 0)
+            
+            # Determine action based on signal
+            if confidence < self.params["confidence_threshold"]:
+                return {
+                    "action": "hold",
+                    "side": "yes",
+                    "confidence": confidence,
+                    "reasoning": signal_data.get("reason", "low_confidence"),
+                    "suggested_amount": 0.0
+                }
+            
+            # Determine side based on signal direction
+            if signal > 0:
+                action = "buy"
+                side = "yes"
+            else:
+                action = "sell" 
+                side = "no"
+            
+            # Get suggested amount
+            suggested_amount = signal_data.get("suggested_amount", 0.0)
+            
+            # Build reasoning
+            analysis_summary = signal_data.get("analysis_summary", {})
+            reasoning_parts = []
+            
+            if "net_pressure" in analysis_summary:
+                pressure = analysis_summary["net_pressure"]
+                if pressure > 0:
+                    reasoning_parts.append(f"Strong buy pressure ({pressure:.2f})")
+                else:
+                    reasoning_parts.append(f"Strong sell pressure ({abs(pressure):.2f})")
+            
+            if "buy_sell_ratio" in analysis_summary:
+                ratio = analysis_summary["buy_sell_ratio"]
+                reasoning_parts.append(f"Buy/sell ratio: {ratio:.2f}")
+            
+            if "total_volume" in analysis_summary:
+                volume = analysis_summary["total_volume"]
+                reasoning_parts.append(f"Volume: ${volume:,.0f}")
+            
+            reasoning = "; ".join(reasoning_parts) if reasoning_parts else "Orderflow signal"
+            
+            return {
+                "action": action,
+                "side": side,
+                "confidence": confidence,
+                "reasoning": reasoning,
+                "suggested_amount": suggested_amount
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in analyze method: {e}")
+            return {
+                "action": "hold",
+                "side": "yes", 
+                "confidence": 0.0,
+                "reasoning": f"Analysis error: {str(e)}",
+                "suggested_amount": 0.0
+            }
+
     def get_strategy_description(self) -> str:
         """Retorna descrição da estratégia."""
         return f"""

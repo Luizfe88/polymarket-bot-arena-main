@@ -288,14 +288,18 @@ class EnhancedBotEvolutionManager:
             perf = bot.get_performance(hours=days*24)
             trades = db.get_bot_trades(bot.name, hours=days*24)
             
+            if not trades:
+                logger.debug(f"Sem trades para {bot.name} nos últimos {days} dias. Pulando cálculo de métricas.")
+                return None
+            
             if not trades or len(trades) < 10:
                 return None
             
             # Calculate basic metrics
             total_trades = len(trades)
             resolved_trades = len([t for t in trades if t.get("resolved", False)])
-            winning_trades = len([t for t in trades if t.get("pnl", 0) > 0])
-            losing_trades = len([t for t in trades if t.get("pnl", 0) < 0])
+            winning_trades = len([t for t in trades if (t.get("pnl") or 0) > 0])
+            losing_trades = len([t for t in trades if (t.get("pnl") or 0) < 0])
             
             if resolved_trades == 0:
                 return None
@@ -303,11 +307,11 @@ class EnhancedBotEvolutionManager:
             win_rate = winning_trades / resolved_trades if resolved_trades > 0 else 0
             
             # Calculate P&L metrics
-            total_pnl = sum(t.get("pnl", 0) for t in trades)
+            total_pnl = sum((t.get("pnl") or 0) for t in trades)
             avg_trade_pnl = total_pnl / total_trades if total_trades > 0 else 0
             
-            winning_pnls = [t.get("pnl", 0) for t in trades if t.get("pnl", 0) > 0]
-            losing_pnls = [t.get("pnl", 0) for t in trades if t.get("pnl", 0) < 0]
+            winning_pnls = [(t.get("pnl") or 0) for t in trades if (t.get("pnl") or 0) > 0]
+            losing_pnls = [(t.get("pnl") or 0) for t in trades if (t.get("pnl") or 0) < 0]
             
             avg_win = statistics.mean(winning_pnls) if winning_pnls else 0
             avg_loss = statistics.mean(losing_pnls) if losing_pnls else 0
@@ -369,7 +373,7 @@ class EnhancedBotEvolutionManager:
         for trade in trades:
             date = trade.get("timestamp", "").split("T")[0]  # Extract date
             if date:
-                pnl = trade.get("pnl", 0)
+                pnl = trade.get("pnl") or 0
                 daily_pnl[date] = daily_pnl.get(date, 0) + pnl
         
         return list(daily_pnl.values())
@@ -384,7 +388,7 @@ class EnhancedBotEvolutionManager:
         max_drawdown = 0
         
         for trade in trades:
-            cumulative_pnl += trade.get("pnl", 0)
+            cumulative_pnl += (trade.get("pnl") or 0)
             if cumulative_pnl > peak:
                 peak = cumulative_pnl
             
@@ -477,10 +481,10 @@ class EnhancedBotEvolutionManager:
         if resolved_trades == 0:
             return None
         
-        winning_trades = len([t for t in trades if t.get("pnl", 0) > 0])
+        winning_trades = len([t for t in trades if (t.get("pnl") or 0) > 0])
         win_rate = winning_trades / resolved_trades
         
-        total_pnl = sum(t.get("pnl", 0) for t in trades)
+        total_pnl = sum((t.get("pnl") or 0) for t in trades)
         avg_trade_pnl = total_pnl / total_trades
         
         # Simplified Sharpe and other metrics

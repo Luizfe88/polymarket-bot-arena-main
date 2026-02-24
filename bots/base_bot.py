@@ -267,6 +267,16 @@ class BaseBot(ABC):
             reason_msg = f" ({self._pause_reason})" if self._pause_reason else ""
             logger.info(f"[{self.name}] Paused{reason_msg}, skipping trade")
             return {"success": False, "reason": "bot_paused"}
+
+        # Global confidence/edge filters to evitar trades com confiança muito baixa
+        try:
+            min_conf = float(getattr(config, "MIN_CONFIDENCE_THRESHOLD", 0.0))
+            conf = float(signal.get("confidence", 0.0) or 0.0)
+            if conf < min_conf:
+                return {"success": False, "reason": "confidence_below_min"}
+        except Exception:
+            pass
+
         venue = config.get_venue()
         max_pos = config.get_max_position()
 

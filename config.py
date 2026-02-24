@@ -105,7 +105,13 @@ MAX_CONSECUTIVE_LOSSES = _env_int("BOT_ARENA_MAX_CONSECUTIVE_LOSSES", 3)  # Paus
 PAUSE_AFTER_CONSECUTIVE_LOSSES_SECONDS = _env_int("BOT_ARENA_PAUSE_AFTER_CONSECUTIVE_LOSSES", 3600)  # Pause for 1 hour
 MAX_TRADES_PER_HOUR_PER_BOT = 20  # Hard cap to prevent overtrading in 5-min markets
 
-MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 50000)  # Reduzido de 150k para 50k para mais liquidez
+# User-defined Risk Parameters from .env
+MAX_RISK_PER_TRADE = _env_float("MAX_RISK_PER_TRADE", 0.03)  # 3% da banca por trade completo
+MAX_EXPOSURE_PER_MARKET = _env_float("MAX_EXPOSURE_PER_MARKET", 0.10)  # max 10% total em um mercado (evita acumular)
+MAX_POSITION_PER_BOT = _env_float("MAX_POSITION_PER_BOT", 100)  # $ por bot por sinal (limita slices)
+KELLY_FRACTION = _env_float("KELLY_FRACTION", 0.25)  # quarter-Kelly (seguro) - usado se o bot tiver Kelly integrado
+
+MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 50000)  # Pode ser elevado via .env para mercados mais líquidos
 MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.05)  # Aumentado de 2.5% para 5% para mais oportunidades
 MIN_TIME_TO_RESOLUTION = _env_int("MIN_TIME_TO_RESOLUTION", 6)
 MAX_TIME_TO_RESOLUTION = _env_int("MAX_TIME_TO_RESOLUTION", 45 * 24)
@@ -135,7 +141,7 @@ PAPER_ENTRY_PRICE_BUFFER = _env_float("BOT_ARENA_PAPER_ENTRY_PRICE_BUFFER", 0.01
 LIVE_ENTRY_PRICE_BUFFER = _env_float("BOT_ARENA_LIVE_ENTRY_PRICE_BUFFER", 0.006)
 PAPER_FEE_RATE = _env_float("BOT_ARENA_PAPER_FEE_RATE", 0.000)
 LIVE_FEE_RATE = _env_float("BOT_ARENA_LIVE_FEE_RATE", 0.000)
-MIN_EXPECTED_VALUE = _env_float("BOT_ARENA_MIN_EXPECTED_VALUE", 0.045)
+MIN_EXPECTED_VALUE = _env_float("BOT_ARENA_MIN_EXPECTED_VALUE", 0.075)
 SKIP_RETRY_SECONDS = _env_int("BOT_ARENA_SKIP_RETRY_SECONDS", 45)
 
 # V3.0 Professional Execution Engine
@@ -148,7 +154,11 @@ EXECUTION_MAX_ORDER_SIZE = _env_float("EXECUTION_MAX_ORDER_SIZE", 1000.0)  # Max
 EXECUTION_TWAP_SLICES = _env_int("EXECUTION_TWAP_SLICES", 4)  # Number of TWAP slices
 EXECUTION_TWAP_INTERVAL_SECONDS = _env_int("EXECUTION_TWAP_INTERVAL_SECONDS", 30)  # TWAP interval
 EXECUTION_ICEBERG_VISIBLE_SIZE = _env_float("EXECUTION_ICEBERG_VISIBLE_SIZE", 0.1)  # 10% visible for iceberg
-EXECUTION_MIN_EV_AFTER_COSTS = _env_float("EXECUTION_MIN_EV_AFTER_COSTS", 0.045)
+EXECUTION_MIN_EV_AFTER_COSTS = _env_float("EXECUTION_MIN_EV_AFTER_COSTS", MIN_EXPECTED_VALUE)
+
+# Edge/Confidence thresholds (usados para filtrar trades de baixa confiança)
+MIN_EDGE_THRESHOLD = _env_float("MIN_EDGE_THRESHOLD", MIN_EXPECTED_VALUE)
+MIN_CONFIDENCE_THRESHOLD = _env_float("MIN_CONFIDENCE_THRESHOLD", 0.20)
 
 # Market timing window (avoid entering too close to close or too far in advance)
 TRADE_MIN_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MIN_TTE_SECONDS", 21600)
@@ -167,6 +177,16 @@ COPYTRADING_ENABLED = True
 COPYTRADING_MAX_WALLETS_TO_TRACK = 10
 COPYTRADING_POSITION_SIZE_FRACTION = 0.5  # Copy 50% of whale's position size
 
+# LLM / Gemini Copytrading Settings
+POLYMARKET_API_URL = POLYMARKET_HOST
+MIN_WIN_RATE = _env_float("COPYTRADING_MIN_WHALE_WIN_RATE", 0.70)
+MIN_WHALE_VOLUME = _env_float("COPYTRADING_MIN_WHALE_VOLUME", 50000)
+TOP_WHALES_COUNT = _env_int("COPYTRADING_TOP_WHALES_COUNT", 30)
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
+LLM_API_KEY = (os.environ.get("LLM_API_KEY") or os.environ.get("GEMINI_API_KEY") or "").strip()
+MIN_LLM_CONFIDENCE = _env_float("COPYTRADE_CONFIDENCE_THRESHOLD", 0.65)
+TRADE_MIN_EV_AFTER_COSTS = _env_float("TRADE_MIN_EV_AFTER_COSTS", MIN_EXPECTED_VALUE)
+
 # Dashboard Settings
 DASHBOARD_PORT = 8510
 DASHBOARD_HOST = "127.0.0.1"
@@ -176,7 +196,6 @@ LOG_DIR = Path(__file__).parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 # Sizing and diversity
-KELLY_FRACTION = _env_float("BOT_ARENA_KELLY_FRACTION", 0.5)
 DIVERSITY_PENALTY = _env_float("BOT_ARENA_DIVERSITY_PENALTY", 0.15)
 
 
