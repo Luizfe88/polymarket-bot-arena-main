@@ -5,6 +5,7 @@ import random
 import copy
 import math
 import threading
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -170,7 +171,16 @@ class BaseBot(ABC):
             "stale": stale,
         }
 
-        p_yes = edge_model.predict_yes_probability(self.name, market_price, x)
+        p_yes_raw = edge_model.predict_yes_probability(self.name, market_price, x)
+
+        adv_edge = None
+        try:
+            from advanced_edge_models import compute_advanced_edge
+
+            adv_edge = compute_advanced_edge(self.name, market, signals, p_yes_raw)
+            p_yes = float(adv_edge.get("p_yes", p_yes_raw) or p_yes_raw)
+        except Exception:
+            p_yes = p_yes_raw
 
         entry_buffer = config.get_entry_price_buffer()
         fee_rate = config.get_fee_rate()
@@ -188,13 +198,23 @@ class BaseBot(ABC):
 
         min_ev = getattr(config, "MIN_EXPECTED_VALUE", 0.0)
         if best_ev < float(min_ev):
+            features = {
+                "x": x,
+                "market_price": market_price,
+                "p_yes": p_yes,
+                "p_entry_yes": p_eff_yes,
+                "p_entry_no": p_eff_no,
+            }
+            if adv_edge is not None:
+                features["advanced_edge"] = adv_edge
+
             return {
                 "action": "skip",
                 "side": side,
                 "confidence": min(0.95, abs(p_yes - market_price) * 2.5),
                 "reasoning": f"No edge after costs: p_yes={p_yes:.3f} mkt={market_price:.3f} ev_yes={ev_yes:.2%} ev_no={ev_no:.2%}",
                 "suggested_amount": 0,
-                "features": {"x": x, "market_price": market_price, "p_yes": p_yes, "p_entry_yes": p_eff_yes, "p_entry_no": p_eff_no},
+                "features": features,
             }
 
         max_pos = config.get_max_position()
@@ -212,13 +232,23 @@ class BaseBot(ABC):
             f"mom={momentum_signal:+.3f} vol={vol:.4f} tte={tte:.0f}s strat={strat:+.3f}"
         )
 
+        features = {
+            "x": x,
+            "market_price": market_price,
+            "p_yes": p_yes,
+            "p_entry_yes": p_eff_yes,
+            "p_entry_no": p_eff_no,
+        }
+        if adv_edge is not None:
+            features["advanced_edge"] = adv_edge
+
         return {
             "action": "buy",
             "side": side,
             "confidence": confidence,
             "reasoning": reasoning,
             "suggested_amount": float(amount),
-            "features": {"x": x, "market_price": market_price, "p_yes": p_yes, "p_entry_yes": p_eff_yes, "p_entry_no": p_eff_no},
+            "features": features,
         }
 
     def execute(self, signal: dict, market: dict) -> dict:
@@ -380,8 +410,9 @@ class BaseBot(ABC):
             return {"success": False, "reason": f"api_error_{resp.status_code}"}
 
     def _execute_live(self, signal, market, amount, mode):
-        """Execute directly on Polymarket CLOB (live trading)."""
+        """Execute directly on Polymarket CLOB (live trading) with professional execution engine."""
         import polymarket_client
+        from execution_engine import execute_professional_trade, OrderType
 
         side = signal["side"].lower()
         if side == "yes":
@@ -393,13 +424,35 @@ class BaseBot(ABC):
             logger.error(f"[{self.name}] No token ID for side={side} on {market.get('question', '')[:50]}")
             return {"success": False, "reason": "missing_token_id"}
 
-        result = polymarket_client.place_market_order(
-            token_id=token_id,
+        # Get market data for professional execution
+        market_data = polymarket_client.get_market_info(token_id)
+        if not market_data:
+            logger.error(f"[{self.name}] Failed to get market data for {market.get('question', '')[:50]}")
+            return {"success": False, "reason": "no_market_data"}
+
+        # Calculate expected value from signal
+        expected_value = abs(signal.get("confidence", 0.5) - 0.5) * 2  # Convert confidence to EV
+        
+        # Convert amount to shares (approximate)
+        current_price = market_data.get("best_ask", 0.5) if side == "yes" else market_data.get("best_bid", 0.5)
+        size = amount / max(0.01, current_price)
+
+        # Execute professional trade with intelligent order management
+        result = execute_professional_trade(
+            market_data=market_data,
             side=side,
-            amount=amount,
+            size=size,
+            token_id=token_id,
+            expected_value=expected_value,
+            client_func=polymarket_client.place_market_order
         )
 
         if result.get("success"):
+            # Aggregate results from multiple executions
+            total_executed = result.get("total_executed", 0)
+            total_cost = result.get("total_cost", 0)
+            strategy = result.get("strategy", "UNKNOWN")
+            
             db.log_trade(
                 bot_name=self.name,
                 market_id=market.get("id") or market.get("market_id"),
@@ -409,19 +462,29 @@ class BaseBot(ABC):
                 venue="polymarket",
                 mode=mode,
                 confidence=signal["confidence"],
-                reasoning=signal.get("reasoning"),
-                trade_id=result.get("order_id"),
-                shares_bought=result.get("size"),
+                reasoning=f"{signal.get('reasoning', '')} | Strategy: {strategy} | Cost: ${total_cost:.3f}",
+                trade_id=f"PRO_{int(time.time())}",  # Generate professional trade ID
+                shares_bought=total_executed,
             )
-            logger.info(f"[{self.name}] LIVE trade: {signal['side']} ${amount} at {result.get('price')} on {market.get('question', '')[:50]}")
+            logger.info(f"[{self.name}] PROFESSIONAL trade: {signal['side']} ${amount} executed with {strategy} strategy, cost: ${total_cost:.3f} on {market.get('question', '')[:50]}")
             
         else:
-            logger.error(f"[{self.name}] LIVE trade failed: {result.get('error')}")
+            logger.error(f"[{self.name}] PROFESSIONAL trade failed: {result.get('error')}")
             # Send Telegram notification for failed trade
-            telegram = get_telegram_notifier()
-            if telegram:
-                telegram.notify_error(self.name, f"Trade failed: {result.get('error', 'Unknown error')}")
-
+            try:
+                notifier = get_telegram_notifier()
+                if notifier and notifier.enabled:
+                    notifier.send_trade_failed(
+                        bot_name=self.name,
+                        market=market.get("question", "Unknown"),
+                        side=signal["side"],
+                        amount=amount,
+                        error=result.get("error", "Unknown error"),
+                        mode=mode,
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to send Telegram notification: {e}")
+            
         return result
 
     def _load_api_key(self):

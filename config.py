@@ -98,6 +98,20 @@ MAX_TOTAL_POSITION_PCT_OF_BALANCE = 0.50  # Never allocate more than 50% of tota
 MAX_CONSECUTIVE_LOSSES = _env_int("BOT_ARENA_MAX_CONSECUTIVE_LOSSES", 3)  # Pause after 3 consecutive losses
 PAUSE_AFTER_CONSECUTIVE_LOSSES_SECONDS = _env_int("BOT_ARENA_PAUSE_AFTER_CONSECUTIVE_LOSSES", 3600)  # Pause for 1 hour
 MAX_TRADES_PER_HOUR_PER_BOT = 20  # Hard cap to prevent overtrading in 5-min markets
+
+# --- V3.0 Market Discovery Engine ---
+MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 10000)              # Min $10k volume to start, will increase to $200k
+MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.05)            # Max 5% spread, will tighten to 2%
+MIN_TIME_TO_RESOLUTION = _env_int("MIN_TIME_TO_RESOLUTION", 24)      # Min 24 hours to resolution
+MAX_TIME_TO_RESOLUTION = _env_int("MAX_TIME_TO_RESOLUTION", 45 * 24) # Max 45 days (in hours)
+PRIORITY_CATEGORIES = [                                              # Keywords for priority categories
+    'politics', 
+    'crypto', 
+    'sports', 
+    'macro', 
+    'tech'
+]
+
 MIN_TRADE_AMOUNT = _env_float("BOT_ARENA_MIN_TRADE_AMOUNT", 0.01)  # Minimum trade amount
 
 # Evolution Settings
@@ -117,6 +131,18 @@ PAPER_FEE_RATE = _env_float("BOT_ARENA_PAPER_FEE_RATE", 0.000)
 LIVE_FEE_RATE = _env_float("BOT_ARENA_LIVE_FEE_RATE", 0.000)
 MIN_EXPECTED_VALUE = _env_float("BOT_ARENA_MIN_EXPECTED_VALUE", 0.015)
 SKIP_RETRY_SECONDS = _env_int("BOT_ARENA_SKIP_RETRY_SECONDS", 45)
+
+# V3.0 Professional Execution Engine
+EXECUTION_TAKER_FEE_RATE = _env_float("EXECUTION_TAKER_FEE_RATE", 0.005)  # 0.5% taker fee
+EXECUTION_MAKER_FEE_RATE = _env_float("EXECUTION_MAKER_FEE_RATE", -0.002)  # -0.2% maker rebate
+EXECUTION_GAS_COST_PER_TRADE = _env_float("EXECUTION_GAS_COST_PER_TRADE", 0.50)  # $0.50 gas per trade
+EXECUTION_MAX_SLIPPAGE = _env_float("EXECUTION_MAX_SLIPPAGE", 0.005)  # 0.5% max slippage
+EXECUTION_DEFAULT_ORDER_TYPE = os.environ.get("EXECUTION_DEFAULT_ORDER_TYPE", "POST_ONLY")  # POST_ONLY, LIMIT, TWAP, ICEBERG
+EXECUTION_MAX_ORDER_SIZE = _env_float("EXECUTION_MAX_ORDER_SIZE", 1000.0)  # Max $1000 per order
+EXECUTION_TWAP_SLICES = _env_int("EXECUTION_TWAP_SLICES", 4)  # Number of TWAP slices
+EXECUTION_TWAP_INTERVAL_SECONDS = _env_int("EXECUTION_TWAP_INTERVAL_SECONDS", 30)  # TWAP interval
+EXECUTION_ICEBERG_VISIBLE_SIZE = _env_float("EXECUTION_ICEBERG_VISIBLE_SIZE", 0.1)  # 10% visible for iceberg
+EXECUTION_MIN_EV_AFTER_COSTS = _env_float("EXECUTION_MIN_EV_AFTER_COSTS", 0.045)  # Min 4.5% EV after costs
 
 # Market timing window (avoid entering too close to close or too far in advance)
 TRADE_MIN_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MIN_TTE_SECONDS", 30)
@@ -225,3 +251,14 @@ def get_min_trade_amount():
 TELEGRAM_BOT_TOKEN = (os.environ.get("TELEGRAM_BOT_TOKEN", "") or "").strip()  # Get from BotFather
 TELEGRAM_CHAT_ID = (os.environ.get("TELEGRAM_CHAT_ID", "") or "").strip()      # Your chat ID
 TELEGRAM_ENABLED = os.environ.get("TELEGRAM_ENABLED", "true").lower() == "true"
+
+# V3.0 Enhanced Evolution Configuration
+EVOLUTION_MIN_RESOLVED_TRADES = _env_int("EVOLUTION_MIN_RESOLVED_TRADES", 450)  # Minimum 450 resolved trades
+EVOLUTION_TARGET_RESOLVED_TRADES = _env_int("EVOLUTION_TARGET_RESOLVED_TRADES", 600)  # Target 600 resolved trades
+EVOLUTION_SHARPE_KILL_THRESHOLD = _env_float("EVOLUTION_SHARPE_KILL_THRESHOLD", 0.75)  # Kill-switch if Sharpe < 0.75
+EVOLUTION_WALK_FORWARD_DAYS = _env_int("EVOLUTION_WALK_FORWARD_DAYS", 30)  # Walk-forward window size
+EVOLUTION_MAX_EVOLUTION_TIME_HOURS = _env_int("EVOLUTION_MAX_EVOLUTION_TIME_HOURS", 12)  # Max 12 hours for evolution
+EVOLUTION_POPULATION_SIZE = _env_int("EVOLUTION_POPULATION_SIZE", 8)  # Total population size
+EVOLUTION_SURVIVORS_PER_CYCLE = _env_int("EVOLUTION_SURVIVORS_PER_CYCLE", 3)  # Survivors per evolution cycle
+EVOLUTION_MUTATION_RATE = _env_float("EVOLUTION_MUTATION_RATE", 0.10)  # Base mutation rate
+EVOLUTION_DIVERSITY_PENALTY = _env_float("EVOLUTION_DIVERSITY_PENALTY", 0.15)  # Diversity penalty weight

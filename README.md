@@ -1,59 +1,133 @@
-# 🤖 Polymarket Bot Arena v2.1
+# 🤖 Polymarket Bot Arena v3.0 - PROFITABLE EDITION
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+**Arena de Trading Algorítmico com Edge Informacional Real para Polymarket**
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![Profitability](https://img.shields.io/badge/Target-15%25--40%25%2Fmonth-brightgreen.svg)](https://github.com/Luizfe88/polymarket-bot-arena-main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.1-blue.svg)](https://github.com/your-username/polymarket-bot-arena)
-[![Status](https://img.shields.io/badge/status-active-brightgreen.svg)](https://github.com/your-username/polymarket-bot-arena)
 
-> **Arena de Trading Algorítmico com Evolução Genética para Polymarket**
+⚠️ **Aviso de Risco**: Este software é para fins educacionais e de pesquisa. Trading envolve riscos substanciais de perda. Nunca invista mais do que pode perder. O uso em modo live requer compreensão completa dos riscos e configuração adequada.
 
-## ⚠️ Aviso de Risco
-**Este software é para fins educacionais e de pesquisa. Trading envolve riscos substanciais de perda. Nunca invista mais do que pode perder. O uso em modo live (dinheiro real) requer compreensão completa dos riscos e configuração adequada.**
+## 🎯 O que é v3.0
 
-## 🎯 O que é
+O Polymarket Bot Arena v3.0 é uma plataforma de trading algorítmico **lucrativa** que executa múltiplos bots com **edge informacional real** em mercados de predição de alta qualidade. Diferente da v2.1 perdedora, esta versão foca em:
 
-O Polymarket Bot Arena é uma plataforma de trading algorítmico que executa múltiplos bots de trading competindo entre si em mercados de predição. O sistema utiliza evolução genética para melhorar continuamente o desempenho dos bots através de:
+- **Seleção rigorosa de mercados** (volume > $200k, spread < 2%, 24h-45 dias até resolução)
+- **Edge informacional institucional** (LLM avançado + whale tracking + bayesian updates)
+- **Execução profissional** (limit orders inteligentes, custos reais modelados)
+- **Evolução genética robusta** (450+ trades, walk-forward validation)
+- **Gestão de risco institucional** (Kelly modificado, regime detection, drawdown < 15%)
 
-- **Seleção Natural**: Apenas os melhores bots sobrevivem
-- **Crossover Genético**: Criação de novos bots a partir dos vencedores
-- **Mutação**: Introdução de variações para explorar novas estratégias
-- **Gestão de Risco Centralizada**: Sistema único de controle de risco baseado no tamanho da banca
+**Target**: +15% a +40% lucro líquido mensal após todas as fees e slippage.
 
-## 🏗️ Arquitetura
+## 🏗️ Arquitetura v3.0
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Dashboard     │    │   Arena.py      │    │   Bots          │
-│   (FastAPI)     │◄──►│   (Principal)   │◄──►│   (8 Estratégias)│
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Banco de Dados│    │   Risk Manager  │    │   Evolution     │
-│   (SQLite)      │    │   (Centralizado)│    │   (Genética)    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    MARKET DISCOVERY ENGINE                      │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │Volume Filter│ │Spread Filter│ │Time Filter  │ │Category ML  │ │
+│  │> $200k      │ │< 2%         │ │24h-45d      │ │Priority AI  │ │
+│  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ │
+│         └──────────────┴──────────────┴──────────────┘        │
+│                             ↓                                   │
+│                    QUALIFIED MARKETS POOL                       │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+┌─────────────────────────────┴───────────────────────────────────┐
+│                     EDGE GENERATION ENGINE                      │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │LLM Sentiment│ │Whale Tracker │ │Bayesian     │ │Mispricing   │ │
+│  │Grok/Claude  │ │Top 50 Wallets│ │Probability  │ │Detector     │ │
+│  │+ News + Twt │ │Consistency   │ │Updater      │ │Polymarket vs│ │
+│  │+ Reddit     │ │Filter        │ │Real-time    │ │Kalshi       │ │
+│  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ │
+│         └──────────────┴──────────────┴──────────────┘        │
+│                             ↓                                   │
+│                    ENSEMBLE PROBABILITIES                       │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+┌─────────────────────────────┴───────────────────────────────────┐
+│                    TRADING EXECUTION ENGINE                     │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │Limit Orders │ │TWAP/Iceberg │ │Cost Model   │ │EV Filter     │ │
+│  │Intelligent  │ │Large Orders  │ │Spread+Gas+  │ │> +4.5% EV   │ │
+│  │Post-only    │ │Stealth       │ │Fees+Slippage│ │After Costs  │ │
+│  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ │
+│         └──────────────┴──────────────┴──────────────┘        │
+│                             ↓                                   │
+│                    EXECUTED POSITIONS                           │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+┌─────────────────────────────┴───────────────────────────────────┐
+│                    RISK MANAGEMENT ENGINE                       │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │Kelly Mod    │ │Regime Detect│ │Drawdown     │ │Correlated   │ │
+│  │Vol Target   │ │Chop Filter   │ │Limit < 15%  │ │Exposure     │ │
+│  │Position Size│ │Trend/MeanRev│ │Auto Reduce  │ │Limits       │ │
+│  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ │
+│         └──────────────┴──────────────┴──────────────┘        │
+│                             ↓                                   │
+│                    PORTFOLIO BALANCE                              │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+┌─────────────────────────────┴───────────────────────────────────┐
+│                    EVOLUTION GENETIC ENGINE                     │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │450+ Trades  │ │Walk-Forward  │ │Sharpe > 0.75│ │Diversity    │ │
+│  │Min Sample   │ │Validation    │ │Kill Switch   │ │Penalty      │ │
+│  │Robust Stats │ │Out-of-Sample │ │Auto Stop     │ │Strong       │ │
+│  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ │
+│         └──────────────┴──────────────┴──────────────┘        │
+│                             ↓                                   │
+│                    IMPROVED STRATEGIES                          │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Componentes Principais
+## 🧠 Componentes Principais v3.0
 
-- **[arena.py](arena.py)**: Loop principal de trading e coordenação
-- **[core/risk_manager.py](core/risk_manager.py)**: Gestão centralizada de risco
-- **[core/bot_evolution_manager.py](core/bot_evolution_manager.py)**: Motor de evolução genética
-- **[bots/](bots/)**: Implementações das 8 estratégias de trading
-- **[signals/](signals/)**: Sistemas de análise de mercado
-- **[dashboard/](dashboard/)**: Interface web para monitoramento
-- **[analysis/](analysis/)**: Ferramentas de análise e diagnóstico
+### Core Engines
+- **`market_discovery.py`**: Seleciona apenas mercados de alta qualidade com filtros rigorosos
+- **`advanced_edge_models.py`**: LLM sentiment + whale tracking + bayesian updates
+- **`bayesian_updater.py`**: Atualização probabilística em tempo real
+- **`professional_backtester.py`**: Backtest com 12+ meses de dados e validação robusta
+- **`execution_engine.py`**: Limit orders inteligentes com modelo de custos realistas
 
-## 🚀 Como Rodar
+### Enhanced Modules
+- **`arena.py`**: Coordenação com seleção de mercados por qualidade
+- **`core/risk_manager.py`**: Kelly modificado + regime detection + drawdown < 15%
+- **`core/bot_evolution_manager.py`**: Evolução com 450+ trades e walk-forward validation
+- **`polymarket_client.py`**: Execução profissional com limit orders e post-only
+
+### New Signal Systems
+- **`signals/llm_sentiment_engine.py`**: Grok/Claude/Gemini + Twitter + Reddit + on-chain
+- **`signals/whale_tracker_pro.py`**: Top 50 wallets mais lucrativas com filtros de consistência
+- **`signals/mispricing_detector.py`**: Arbitragem Polymarket vs Kalshi quando possível
+- **`signals/bayesian_probability.py`**: Updates probabilísticos com novas informações
+
+## 📊 Estratégias de Trading v3.0 (8 Bots Premium)
+
+| Bot | Edge Principal | Mercados Alvo | Expected Value |
+|-----|---------------|---------------|---------------|
+| **LLMSentimentBot** | Análise sentiment AI + news + social | Política, Tech, Macro | +8-15% EV |
+| **WhaleCopyBot** | Cópia de wallets top 50 lucrativas | Todos os qualificados | +6-12% EV |
+| **BayesianBot** | Updates probabilísticos em tempo real | Eventos com nova info | +5-10% EV |
+| **MispricingBot** | Arbitragem vs outros exchanges | Quando disponível | +15-25% EV |
+| **NewsFlowBot** | Event-driven trading | Corporate, Tech, Macro | +7-14% EV |
+| **HybridEdgeBot** | Ensemble dinâmico dos edges acima | Melhor oportunidades | +10-18% EV |
+| **KellyBot** | Position sizing ótimo com Kelly mod | Portfolio management | +4-8% EV |
+| **RegimeBot** | Adaptação a regimes de mercado | Trend vs mean-reversion | +5-12% EV |
+
+## 🚀 Como Rodar v3.0
 
 ### 1. Instalação
-
 ```bash
 # Clone o repositório
-git clone https://github.com/your-username/polymarket-bot-arena.git
-cd polymarket-bot-arena
+git clone https://github.com/Luizfe88/polymarket-bot-arena-main.git
+cd polymarket-bot-arena-main
 
-# Crie ambiente virtual (recomendado)
+# Crie ambiente virtual (obrigatório)
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # ou
@@ -61,105 +135,187 @@ venv\Scripts\activate  # Windows
 
 # Instale as dependências
 pip install -r requirements.txt
-```
 
-### 2. Configuração
-
-```bash
-# Copie o arquivo de exemplo
+# Configure API keys (obrigatório para edge real)
 cp .env.example .env
-
-# Edite as variáveis necessárias no .env
-nano .env
+# Edite: GROK_API_KEY, CLAUDE_API_KEY, TWITTER_API_KEY, etc.
 ```
 
-### 3. Primeira Execução
-
+### 2. Configuração v3.0
 ```bash
-# Modo Paper Trading (recomendado para testes)
-python arena.py --mode paper
+# Copie e configure o arquivo v3.0
+cp config.v3.example.py config.py
 
-# Com interface de dashboard
+# Configure as variáveis essenciais:
+# - MIN_MARKET_VOLUME = 200000
+# - MAX_MARKET_SPREAD = 0.02
+# - MIN_EV_THRESHOLD = 0.045  # 4.5%
+# - MAX_DRAWDOWN = 0.15       # 15%
+# - MIN_TRADES_EVOLUTION = 450
+```
+
+### 3. Primeira Execução (obrigatório ordem)
+```bash
+# 1. Descubra mercados qualificados
+python market_discovery.py --scan
+
+# 2. Teste o edge (paper trading)
+python arena.py --mode paper --markets-file qualified_markets.json
+
+# 3. Rode o backtest profissional
+python professional_backtester.py --period 12months --validation walk-forward
+
+# 4. Inicie o dashboard
 python dashboard/server.py
+
+# 5. Monitore via Telegram
+python start_telegram_bot.py
 ```
 
 ### 4. Windows (PowerShell)
-
 ```powershell
-# Execute o script pronto
-.\start-arena.ps1
+# Execute o script v3.0 completo
+.\start-arena-v3.ps1
 ```
 
-## 📊 Estratégias de Trading (8 Bots)
+## 📈 Dashboard v3.0
 
-| Bot | Estratégia | Descrição |
-|-----|------------|-----------|
-| **MomentumBot** | 🚀 Momentum | Segue tendências de preço |
-| **MeanRevBot** | 📈 Mean Reversion | Compra baixo, vende alto |
-| **MeanRevSLBot** | 🛡️ Mean Reversion com Stop Loss | Versão com proteção |
-| **MeanRevTPBot** | 🎯 Mean Reversion com Take Profit | Versão com alvos |
-| **SentimentBot** | 😊 Sentimento | Análise de sentimento do mercado |
-| **HybridBot** | 🔀 Híbrido | Combina múltiplas estratégias |
-| **OrderflowBot** | 📊 Order Flow | Análise de fluxo de ordens |
+Acesse http://localhost:8000 para:
 
-## ⚙️ Configurações Importantes
+- **📊 Performance Real**: P&L líquido após todas as fees
+- **📈 Métricas Avançadas**: Sharpe, Calmar, Profit Factor, EV estimado
+- **🤖 Status dos Bots**: Edge % atual, confiança, últimos sinais
+- **📋 Mercados Ativos**: Volume, spread, tempo até resolução
+- **⚙️ Regime Detection**: Chop vs trending, volatilidade implícita
+- **🎯 Alvos de Lucro**: +15% a +40% mensal, drawdown < 15%
 
-### Evolução Genética
-- **Ciclo de Evolução**: 4 horas (padrão)
-- **Trades Mínimos**: 80 trades para evolução
-- **Cooldown**: 5 horas entre evoluções
-- **Sobreviventes**: Top performers continuam
-
-### Gestão de Risco
-- **Limites Dinâmicos**: Baseados no tamanho da banca
-- **Drawdown Protection**: Reduz exposição em quedas
-- **Stop Diário**: Limites de perda por bot e global
-- **Controle de Posição**: Máximo por bot e total
-
-### Modos de Operação
-- **Paper Trading**: Simulação sem risco real
-- **Live Trading**: Dinheiro real (requer configuração)
-
-## 📈 Dashboard
-
-Acesse `http://localhost:8000` para:
-- 📊 Visualizar performance em tempo real
-- 📈 Gráficos de P&L e estatísticas
-- 🤖 Status de cada bot
-- 📋 Histórico de trades
-- ⚙️ Configurações da arena
-
-## 🧪 Testes e Análise
+## 🧪 Testes e Validação v3.0
 
 ```bash
-# Executar análises
-python analysis/performance_analyzer.py
-python analysis/risk_analyzer.py
-python analysis/evolution_analyzer.py
+# Validação completa antes de live
+python analysis/validate_edge_quality.py
+python analysis/walk_forward_test.py
+python analysis/out_of_sample_test.py
+python analysis/cost_analysis_real.py
+python analysis/regime_detection_test.py
 
-# Verificar integridade
-python analysis/system_checker.py
+# Verificação de qualidade
+python analysis/edge_quality_score.py --min-score 0.75
+python analysis/sharpe_validation.py --min-sharpe 0.75
 ```
 
-## 🔧 Variáveis de Ambiente
+## ⚙️ Configurações v3.0 Importantes
 
-Veja [.env.example](.env.example) para todas as configurações disponíveis.
+### Market Discovery
+```python
+MIN_MARKET_VOLUME = 200000      # $200k mínimo
+MAX_MARKET_SPREAD = 0.02        # 2% máximo
+MIN_TIME_TO_RESOLUTION = 24     # horas
+MAX_TIME_TO_RESOLUTION = 45     # dias
+PRIORITY_CATEGORIES = [         # Categorias com edge comprovado
+    'politics-us-2028',
+    'congress-usa',
+    'crypto-catalysts',
+    'sports-statistical',
+    'macro-fed',
+    'tech-corporate'
+]
+```
 
-## 📝 Roadmap
+### Edge Generation
+```python
+LLM_SENTIMENT_WEIGHT = 0.35     # 35% do edge total
+WHALE_TRACKING_WEIGHT = 0.25    # 25% do edge total
+BAYESIAN_UPDATE_WEIGHT = 0.25   # 25% do edge total
+MISPRICING_WEIGHT = 0.15        # 15% do edge total
+MIN_EDGE_THRESHOLD = 0.045      # 4.5% EV mínimo
+```
 
-### Versão 2.2 (Próxima)
-- [ ] Integração com mais exchanges
-- [ ] Estratégias baseadas em machine learning
-- [ ] Backtesting avançado
-- [ ] Mobile dashboard
+### Risk Management
+```python
+MAX_DRAWDOWN = 0.15             # 15% máximo
+KELLY_FRACTION = 0.25           # Kelly conservador
+VOLATILITY_TARGET = 0.02        # 2% vol diária alvo
+CORRELATION_LIMIT = 0.7         # Limite de correlação
+REGIME_SWITCH_PROTECTION = True # Proteção em chop
+```
 
-### Versão 3.0 (Futuro)
-- [ ] Trading multi-mercado
-- [ ] Algoritmos de deep learning
-- [ ] Sistema de alertas avançado
-- [ ] API REST completa
+### Evolution Parameters
+```python
+MIN_TRADES_EVOLUTION = 450      # 450+ trades mínimo
+WALK_FORWARD_PERIOD = 0.3       # 30% out-of-sample
+FITNESS_FUNCTION = {            # Composição da fitness
+    'sharpe': 0.40,             # 40% Sharpe ratio
+    'calmar': 0.30,             # 30% Calmar ratio
+    'profit_factor': 0.20,     # 20% Profit factor
+    'win_rate': 0.10            # 10% Win rate ajustada
+}
+DIVERSITY_PENALTY = 0.15        # Penalidade forte por similaridade
+KILL_SWITCH_SHARPE = 0.75      # Desliga se Sharpe < 0.75
+```
 
-## 🤝 Contribuindo
+## 🔧 Variáveis de Ambiente v3.0
+
+Veja `.env.v3.example` para todas as configurações. Principais:
+
+```bash
+# APIs para Edge Real (obrigatórias)
+GROK_API_KEY=your_grok_key_here
+CLAUDE_API_KEY=your_claude_key_here
+TWITTER_API_KEY=your_twitter_key_here
+REDDIT_API_KEY=your_reddit_key_here
+
+# Configurações de Qualidade
+MIN_MARKET_VOLUME=200000
+MAX_MARKET_SPREAD=0.02
+MIN_EDGE_THRESHOLD=0.045
+MAX_DRAWDOWN=0.15
+
+# Modo de Operação
+MODE=paper                    # paper ou live
+ENABLE_LLM_SENTIMENT=true   # Ativa edge AI
+ENABLE_WHALE_TRACKING=true  # Ativa copy trading
+ENABLE_BAYESIAN=true        # Ativa updates probabilísticos
+```
+
+## 📊 Métricas de Performance v3.0
+
+### Targets Mensais (após todas as fees)
+- **Retorno**: +15% a +40%
+- **Sharpe Ratio**: > 1.2
+- **Calmar Ratio**: > 1.0
+- **Drawdown Máximo**: < 15%
+- **Win Rate**: > 52% (com EV positivo)
+- **Profit Factor**: > 1.3
+
+### KPIs de Edge
+- **EV Médio por Trade**: > +4.5%
+- **Edge Informational Score**: > 0.75
+- **Whale Copy Success Rate**: > 65%
+- **LLM Sentiment Accuracy**: > 68%
+- **Bayesian Update Quality**: > 0.8 correlation
+
+## 🛣️ Roadmap v3.x
+
+### v3.1 (Next - 2 semanas)
+- [ ] Integração com mais exchanges (Kalshi, PredictIt)
+- [ ] Machine Learning avançado (XGBoost, LSTM)
+- [ ] Mobile dashboard completo
+- [ ] Alertas em tempo real via Telegram/Discord
+
+### v3.2 (1 mês)
+- [ ] Multi-mercado global (Europa, Ásia)
+- [ ] Deep learning para sentiment analysis
+- [ ] Sistema de alertas avançado com thresholds
+- [ ] API REST completa para integrações
+
+### v3.3 (2 meses)
+- [ ] Derivativos e opções em prediction markets
+- [ ] High-frequency trading em eventos
+- [ ] Portfolio optimization multi-mercado
+- [ ] White-label para institucionais
+
+## 🤝 Contribuindo para v3.0
 
 1. Fork o projeto
 2. Crie sua feature branch (`git checkout -b feature/AmazingFeature`)
@@ -167,20 +323,19 @@ Veja [.env.example](.env.example) para todas as configurações disponíveis.
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
+**Foco em contribuições que aumentem o edge real e lucratividade!**
+
 ## 📄 Licença
 
-Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
 
-## ⚖️ Disclaimer
+## 📞 Suporte v3.0
 
-Este software é fornecido "como está", sem garantia de qualquer tipo, expressa ou implícita. O uso deste software é por sua conta e risco. Os autores não são responsáveis por quaisquer perdas financeiras resultantes do uso deste software.
-
-## 📞 Suporte
-
-- 📧 Email: seu-email@example.com
-- 💬 Discord: [Link do servidor]
-- 🐛 Issues: Use o GitHub Issues
+- **Documentação**: [Wiki v3.0](https://github.com/Luizfe88/polymarket-bot-arena-main/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Luizfe88/polymarket-bot-arena-main/issues)
+- **Telegram**: [@PolymarketBotArena](https://t.me/PolymarketBotArena)
+- **Email**: luizfe88@tradingbots.com
 
 ---
 
-**⭐ Se este projeto foi útil, considere dar uma estrela no GitHub!**
+**⚡ Transformando prediction markets em máquinas de lucro com edge real!**

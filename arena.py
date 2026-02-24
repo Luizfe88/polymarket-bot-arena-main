@@ -30,7 +30,6 @@ from copytrading.tracker import WalletTracker
 from copytrading.copier import TradeCopier
 from logging_config import setup_logging_with_brt
 from evolution_integration import evolution_integration, on_trade_resolved
-from bot_evolution_manager import BotEvolutionManager
 import telegram_bot
 
 logger = setup_logging_with_brt("arena", log_file=config.LOG_DIR / "arena.log")

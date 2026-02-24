@@ -7,7 +7,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 import db
-from bot_evolution_manager import BotEvolutionManager
+from enhanced_bot_evolution_manager import EnhancedBotEvolutionManager
 from bots.base_bot import BaseBot
 
 logger = logging.getLogger(__name__)
@@ -18,32 +18,36 @@ class EvolutionIntegration:
     
     def __init__(self):
         self._active_bots = []
-        # Cria evolution manager com função para obter bots ativos
-        self.evolution_manager = BotEvolutionManager(bots_source=self.get_active_bots_for_evolution)
-        logger.info("🔄 EvolutionIntegration iniciado")
+        # Cria evolution manager v3.0 com função para obter bots ativos
+        self.evolution_manager = EnhancedBotEvolutionManager(bots_source=self.get_active_bots_for_evolution)
+        logger.info("🔄 EvolutionIntegration v3.0 iniciado")
     
     def on_trade_resolved(self, bot_name: str, trade_data: Dict):
         """
-        Chamado quando um trade é resolvido
+        Chamado quando um trade é resolvido (v3.0)
         
         Args:
             bot_name: Nome do bot
             trade_data: Dados do trade resolvido
         """
         try:
-            # Extrai informações do trade
+            # Extrai informações do trade para v3.0
             trade_result = {
                 'market_id': trade_data.get('market_id'),
                 'outcome': trade_data.get('outcome'),
                 'pnl': trade_data.get('pnl', 0),
-                'resolved_at': datetime.now().isoformat()
+                'resolved_at': datetime.now().isoformat(),
+                'confidence': trade_data.get('confidence', 0.5),
+                'expected_value': trade_data.get('expected_value', 0),
+                'actual_outcome': trade_data.get('actual_outcome'),
+                'execution_strategy': trade_data.get('execution_strategy', 'unknown')
             }
             
-            # Notifica evolution manager
-            self.evolution_manager.increment_trade_counter(bot_name, trade_result)
+            # Notifica evolution manager v3.0
+            self.evolution_manager.record_resolved_trade(bot_name, trade_result)
             
         except Exception as e:
-            logger.error(f"Erro ao processar trade resolvido: {e}", exc_info=True)
+            logger.error(f"Erro ao processar trade resolvido v3.0: {e}", exc_info=True)
     
     def set_active_bots(self, bots: List[BaseBot]):
         """
@@ -97,11 +101,11 @@ class EvolutionIntegration:
         return self.evolution_manager.force_evolution()
     
     def check_and_trigger_evolution_if_needed(self):
-        """Verifica e dispara a evolução se os critérios forem atendidos."""
+        """Verifica e dispara a evolução v3.0 se os critérios forem atendidos."""
         try:
-            self.evolution_manager.check_evolution_triggers()
+            self.evolution_manager._evaluate_evolution_triggers()
         except Exception as e:
-            logger.error(f"Erro ao verificar gatilhos de evolução: {e}", exc_info=True)
+            logger.error(f"Erro ao verificar gatilhos de evolução v3.0: {e}", exc_info=True)
     
     def should_run_regular_evolution(self) -> bool:
         """

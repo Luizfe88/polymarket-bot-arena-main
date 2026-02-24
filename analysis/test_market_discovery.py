@@ -1,99 +1,74 @@
-#!/usr/bin/env python3
-"""Test script to verify market discovery for BTC, ETH, and SOL."""
 
-import os
-import sys
 import json
-from pathlib import Path
+import sys
+import os
 
-# Add the project root to the path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add project root to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from arena import discover_markets
-from config import SIMMER_API_KEY_PATH
+from market_discovery import fetch_all_markets
 
-def load_api_key():
-    """Load API key from file."""
-    try:
-        import json
-        with open(SIMMER_API_KEY_PATH, "r") as f:
-            data = json.load(f)
-            return data.get("api_key")
-    except:
-        return None
-
-def test_market_discovery():
-    """Test market discovery for multiple cryptocurrencies."""
-    print("🚀 Testing market discovery for BTC, ETH, and SOL...")
+def inspect_market_structure():
+    """
+    Fetches all markets, then prints the keys and the full structure
+    of the first market object to understand its data structure.
+    """
+    print("--- Market Structure Inspection ---")
     
-    api_key = load_api_key()
-    if not api_key:
-        print("❌ API key not found. Please ensure SIMMER_API_KEY_PATH is configured.")
+    response = fetch_all_markets()
+    
+    if not response:
+        print("Could not fetch any markets. Please check connection and polymarket_client.")
         return
+
+    print(f"\n[INFO] Type of the response from fetch_all_markets: {type(response)}")
+
+    if isinstance(response, dict):
+        print("\n[INFO] Keys in the response dictionary:")
+        print("------------------------------------")
+        for key in response.keys():
+            print(f"- {key}")
+
+        # Assuming the list of markets is in a key, e.g., 'data' or 'results'
+        # Let's find the key that contains a list
+        market_list = []
+        for key, value in response.items():
+            if isinstance(value, list) and value:
+                market_list = value
+                print(f"\n[INFO] Found a list of markets under the key: '{key}'")
+                break
+    elif isinstance(response, list):
+        market_list = response
+    else:
+        print("\n[ERROR] Response is not a dictionary or a list. Cannot proceed.")
+        print(response)
+        return
+
+    if not market_list:
+        print("\n[WARNING] Could not find a list of markets in the response.")
+        print("\n[INFO] Full response structure:")
+        print("------------------------------")
+        print(json.dumps(response, indent=2))
+        return
+
+    # Get the first market object
+    first_market = market_list[0]
     
-    try:
-        markets = discover_markets(api_key)
+    print("\n[INFO] Keys available in the first market object:")
+    print("------------------------------------------------")
+    if isinstance(first_market, dict):
+        for key in first_market.keys():
+            print(f"- {key}")
+    else:
+        for attr in dir(first_market):
+            if not attr.startswith('_'):
+                print(f"- {attr}")
+
+    print("\n[INFO] Full JSON structure of the first market:")
+    print("-----------------------------------------------")
+    print(json.dumps(first_market, indent=2))
         
-        if not markets:
-            print("❌ No markets found!")
-            return
-        
-        print(f"✅ Found {len(markets)} markets total")
-        
-        # Categorize markets by crypto type
-        btc_markets = []
-        eth_markets = []
-        sol_markets = []
-        
-        for market in markets:
-            question = market.get("question", "").lower()
-            
-            if any(term in question for term in ["eth", "ethereum"]):
-                eth_markets.append(market)
-            elif any(term in question for term in ["sol", "solana"]):
-                sol_markets.append(market)
-            elif any(term in question for term in ["btc", "bitcoin"]):
-                btc_markets.append(market)
-        
-        print(f"\n📊 Market Breakdown:")
-        print(f"  🟡 Bitcoin (BTC): {len(btc_markets)} markets")
-        print(f"  🔷 Ethereum (ETH): {len(eth_markets)} markets")
-        print(f"  🟢 Solana (SOL): {len(sol_markets)} markets")
-        
-        # Show sample markets
-        if btc_markets:
-            print(f"\n🟡 BTC Sample: {btc_markets[0].get('question', 'No question')}")
-        if eth_markets:
-            print(f"🔷 ETH Sample: {eth_markets[0].get('question', 'No question')}")
-        if sol_markets:
-            print(f"🟢 SOL Sample: {sol_markets[0].get('question', 'No question')}")
-        
-        # Save results to file for inspection
-        results = {
-            "total_markets": len(markets),
-            "btc_count": len(btc_markets),
-            "eth_count": len(eth_markets),
-            "sol_count": len(sol_markets),
-            "markets": [
-                {
-                    "id": m.get("id"),
-                    "question": m.get("question"),
-                    "resolves_at": m.get("resolves_at"),
-                    "status": m.get("status")
-                }
-                for m in markets
-            ]
-        }
-        
-        with open("market_discovery_test.json", "w") as f:
-            json.dump(results, f, indent=2)
-        
-        print(f"\n💾 Results saved to market_discovery_test.json")
-        
-    except Exception as e:
-        print(f"❌ Error during market discovery: {e}")
-        import traceback
-        traceback.print_exc()
+    print("\n--- Inspection Complete ---")
 
 if __name__ == "__main__":
-    test_market_discovery()
+    inspect_market_structure()
