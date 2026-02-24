@@ -16,6 +16,50 @@ from telegram_notifier import get_telegram_notifier
 from evolution_integration import get_evolution_status
 
 
+def _env_float(name: str):
+    """Get float value from environment variable."""
+    import os
+    v = os.environ.get(name)
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except ValueError:
+        return None
+
+
+def _get_realized_pnl(mode: str):
+    """Get realized P&L (same as server.py)"""
+    with db.get_conn() as conn:
+        row_all = conn.execute(
+            """SELECT COALESCE(SUM(pnl), 0) as s
+               FROM trades
+               WHERE mode=? AND pnl IS NOT NULL
+                 AND NOT (outcome IS NOT NULL AND pnl = 0)""",
+            (mode,),
+        ).fetchone()
+        row_today = conn.execute(
+            """SELECT COALESCE(SUM(pnl), 0) as s
+               FROM trades
+               WHERE mode=? AND pnl IS NOT NULL
+                 AND NOT (outcome IS NOT NULL AND pnl = 0)
+                 AND date(created_at) = date('now')""",
+            (mode,),
+        ).fetchone()
+    return {"all_time": float(dict(row_all)["s"]), "today": float(dict(row_today)["s"])}
+
+
+def _get_open_exposure(mode: str):
+    """Get open exposure (same as server.py)"""
+    with db.get_conn() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) as s FROM trades WHERE outcome IS NULL AND mode=?",
+            (mode,),
+        ).fetchone()
+        invested = float(dict(row)["s"])
+    return {"invested": invested}
+
+
 class TelegramCommands:
     """Handler for Telegram bot commands."""
     
@@ -110,7 +154,11 @@ class TelegramCommands:
                 message = f"📊 <b>P&L dos Bots - {mode.upper()}</b>\n"
                 message += f"📅 <b>Atualizado:</b> {self.get_current_time_brt()}\n\n"
                 
-                for bot in bots_data:
+                # Limit to 5 bots and show only active bots (with trades)
+                active_bots = [bot for bot in bots_data if bot['total_trades'] > 0]
+                bots_to_show = active_bots[:5]
+                
+                for bot in bots_to_show:
                     bot_name = bot['bot_name']
                     total_pnl = float(bot['total_pnl'] or 0)
                     total_trades = bot['total_trades']
@@ -135,13 +183,18 @@ class TelegramCommands:
                     message += f"   📈 24h: {self.format_currency(recent_pnl)} ({recent_trades} trades)\n"
                     message += f"   🎯 Trades: <code>{total_trades}</code>\n\n"
                 
-                # Summary
+                # Show indicator if there are more bots
+                if len(active_bots) > 5:
+                    message += f"<i>... e mais {len(active_bots) - 5} bots ativos</i>\n\n"
+                
+                # Summary (all bots, not just shown ones)
                 total_pnl_all = sum(float(bot['total_pnl'] or 0) for bot in bots_data)
                 total_trades_all = sum(bot['total_trades'] for bot in bots_data)
                 
                 message += f"📈 <b>Resumo Geral:</b>\n"
                 message += f"💰 P&L Total: {self.format_currency(total_pnl_all)}\n"
                 message += f"🎯 Trades Totais: <code>{total_trades_all}</code>\n"
+                message += f"🤖 Bots Ativos: <code>{len(active_bots)}</code>\n"
                 
                 return message
                 
@@ -153,15 +206,25 @@ class TelegramCommands:
         try:
             mode = config.get_current_mode()
             
-            # Get total capital
-            total_capital = db.get_total_current_capital(mode)
+            # Use same calculation as server.py
+            realized = _get_realized_pnl(mode)
+            exposure = _get_open_exposure(mode)
+            virtual_bankroll = _env_float("BOT_ARENA_DASHBOARD_VIRTUAL_BANKROLL")
             
-            # Get invested capital (sum of all open positions)
+            if virtual_bankroll is not None:
+                total_capital = float(virtual_bankroll) + float(realized["all_time"])
+                available_capital = float(total_capital) - float(exposure["invested"])
+            else:
+                # Fallback to old calculation if no virtual bankroll
+                total_capital = db.get_total_current_capital(mode)
+                available_capital = total_capital - exposure["invested"]
+            
+            total_invested = float(exposure["invested"])
+            
+            # Get active bots count
             with db.get_conn() as conn:
-                invested_data = conn.execute("""
-                    SELECT 
-                        SUM(amount) as total_invested,
-                        COUNT(DISTINCT bot_name) as active_bots
+                active_bots_data = conn.execute("""
+                    SELECT COUNT(DISTINCT bot_name) as active_bots
                     FROM trades 
                     WHERE mode = ? 
                     AND market_id IN (
@@ -171,21 +234,7 @@ class TelegramCommands:
                         HAVING COUNT(*) % 2 = 1
                     )
                 """, (mode, mode)).fetchone()
-                
-                total_invested = float(invested_data['total_invested'] or 0)
-                active_bots = invested_data['active_bots'] or 0
-                
-                # Get available capital per bot
-                available_per_bot = conn.execute("""
-                    SELECT bot_name, 
-                           (SELECT CASE WHEN mode = 'paper' THEN 1000 ELSE 100 END) - 
-                           COALESCE(SUM(amount), 0) as available
-                    FROM trades 
-                    WHERE mode = ?
-                    GROUP BY bot_name
-                """, (mode,)).fetchall()
-            
-            available_capital = total_capital - total_invested
+                active_bots = active_bots_data['active_bots'] or 0
             
             message = f"💰 <b>Status do Capital - {mode.upper()}</b>\n"
             message += f"📅 <b>Atualizado:</b> {self.get_current_time_brt()}\n\n"
@@ -193,17 +242,7 @@ class TelegramCommands:
             message += f"🏦 <b>Capital Total:</b> <code>${total_capital:.2f}</code>\n"
             message += f"💼 <b>Capital Investido:</b> <code>${total_invested:.2f}</code>\n"
             message += f"💵 <b>Capital Disponível:</b> <code>${available_capital:.2f}</code>\n"
-            message += f"🤖 <b>Bots Ativos:</b> <code>{active_bots}</code>\n\n"
-            
-            if available_per_bot:
-                message += f"📊 <b>Disponível por Bot:</b>\n"
-                for bot in available_per_bot[:5]:  # Show top 5
-                    bot_name = bot['bot_name']
-                    available = float(bot['available'] or 0)
-                    message += f"• {bot_name}: <code>${available:.2f}</code>\n"
-                
-                if len(available_per_bot) > 5:
-                    message += f"<i>... e mais {len(available_per_bot) - 5} bots</i>\n"
+            message += f"🤖 <b>Bots Ativos:</b> <code>{active_bots}</code>\n"
             
             # Today's performance
             today_pnl = self.get_today_pnl(mode)

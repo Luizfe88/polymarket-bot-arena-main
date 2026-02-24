@@ -107,14 +107,16 @@ MAX_TRADES_PER_HOUR_PER_BOT = 20  # Hard cap to prevent overtrading in 5-min mar
 
 # User-defined Risk Parameters from .env
 MAX_RISK_PER_TRADE = _env_float("MAX_RISK_PER_TRADE", 0.03)  # 3% da banca por trade completo
-MAX_EXPOSURE_PER_MARKET = _env_float("MAX_EXPOSURE_PER_MARKET", 0.10)  # max 10% total em um mercado (evita acumular)
-MAX_POSITION_PER_BOT = _env_float("MAX_POSITION_PER_BOT", 100)  # $ por bot por sinal (limita slices)
-KELLY_FRACTION = _env_float("KELLY_FRACTION", 0.25)  # quarter-Kelly (seguro) - usado se o bot tiver Kelly integrado
+MAX_EXPOSURE_PER_MARKET = _env_float("MAX_EXPOSURE_PER_MARKET", 0.10)
+MAX_POSITION_PER_BOT = _env_float("MAX_POSITION_PER_BOT", 100)
+KELLY_FRACTION = _env_float("KELLY_FRACTION", 0.25)
 
-MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 50000)  # Pode ser elevado via .env para mercados mais líquidos
-MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.05)  # Aumentado de 2.5% para 5% para mais oportunidades
+MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 50000)
+MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.10)
 MIN_TIME_TO_RESOLUTION = _env_int("MIN_TIME_TO_RESOLUTION", 6)
-MAX_TIME_TO_RESOLUTION = _env_int("MAX_TIME_TO_RESOLUTION", 45 * 24)
+MAX_TIME_TO_RESOLUTION = _env_int("MAX_TIME_TO_RESOLUTION", 90 * 24)
+
+MIN_EV_THRESHOLD = _env_float("MIN_EV_THRESHOLD", 0.075)
 PRIORITY_CATEGORIES = [
     'politics', 
     'crypto', 

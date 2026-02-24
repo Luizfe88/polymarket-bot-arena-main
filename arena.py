@@ -28,6 +28,7 @@ from signals.sentiment import get_feed as get_sentiment_feed
 from signals.orderflow import get_feed as get_orderflow_feed
 from copytrading.tracker import WalletTracker
 from copytrading.copier import TradeCopier
+import market_discovery
 from logging_config import setup_logging_with_brt
 from evolution_integration import evolution_integration, on_trade_resolved
 import telegram_bot
@@ -987,6 +988,27 @@ class PositionMonitorThread(threading.Thread):
                 self._stop_event.wait(2)
 
 
+def market_discovery_loop(interval_seconds=3600):
+    """Executa market discovery periodicamente em thread separada."""
+    logger.info(f"Market Discovery thread started with {interval_seconds}s interval")
+    
+    while True:
+        try:
+            logger.info("Starting market discovery scan...")
+            success = market_discovery.run_scan_and_save()
+            
+            if success:
+                logger.info("Market discovery scan completed successfully")
+            else:
+                logger.warning("Market discovery scan failed or found no markets")
+                
+        except Exception as e:
+            logger.error(f"Market discovery error: {e}")
+        
+        logger.info(f"Market Discovery sleeping for {interval_seconds} seconds...")
+        time.sleep(interval_seconds)
+
+
 def main_loop(bots, api_key):
     """Main trading loop — each bot trades independently on its own Simmer account."""
     price_feed = get_price_feed()
@@ -1213,6 +1235,8 @@ def main():
     parser.add_argument("--mode", choices=["paper", "live"], default=None,
                         help="Trading mode (default: from config)")
     parser.add_argument("--setup", action="store_true", help="Run setup verification first")
+    parser.add_argument("--market-discovery-interval", type=int, default=3600,
+                        help="Market discovery scan interval in seconds (default: 3600 = 1 hour)")
     args = parser.parse_args()
 
     if args.mode:
@@ -1233,6 +1257,16 @@ def main():
     telegram_thread = threading.Thread(target=telegram_bot.main, daemon=True)
     telegram_thread.start()
     logger.info("Telegram bot started in a background thread.")
+
+    # Start Market Discovery in a separate thread if interval is specified
+    if args.market_discovery_interval > 0:
+        market_discovery_thread = threading.Thread(
+            target=market_discovery_loop, 
+            args=(args.market_discovery_interval,),
+            daemon=True
+        )
+        market_discovery_thread.start()
+        logger.info(f"Market Discovery started with {args.market_discovery_interval}s interval")
 
     api_key = load_api_key()
     if not api_key:
