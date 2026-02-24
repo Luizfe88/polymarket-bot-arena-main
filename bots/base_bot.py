@@ -366,48 +366,69 @@ class BaseBot(ABC):
                 telegram.notify_bot_resumed(self.name)
 
     def _execute_paper(self, signal, market, amount, venue, mode):
-        """Execute via Simmer (paper trading)."""
+        """Execute via Simmer (paper trading) with professional-style TWAP slicing and EV filter."""
         import requests
         api_key = self._load_api_key()
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
-        payload = {
-            "market_id": market.get("id") or market.get("market_id"),
-            "side": signal["side"],
-            "amount": amount,
-            "venue": venue,
-            "source": f"arena:{self.name}",
-            "reasoning": signal.get("reasoning", ""),
-        }
+        # Expected value threshold after costs (paper approximates costs conservatively)
+        expected_value = abs(signal.get("confidence", 0.5) - 0.5) * 2
+        min_ev = float(getattr(config, "EXECUTION_MIN_EV_AFTER_COSTS", 0.045))
+        if expected_value < min_ev:
+            return {"success": False, "reason": "ev_below_min_after_costs"}
 
-        resp = requests.post(
-            f"{config.SIMMER_BASE_URL}/api/sdk/trade",
-            headers=headers, json=payload, timeout=30
-        )
+        # TWAP slicing for paper mode to emulate professional execution
+        slices = int(getattr(config, "EXECUTION_TWAP_SLICES", 4))
+        interval = int(getattr(config, "EXECUTION_TWAP_INTERVAL_SECONDS", 30))
+        slice_amount = max(0.01, float(amount) / max(1, slices))
 
-        if resp.status_code in (200, 201):
-            result = resp.json()
-            db.log_trade(
-                bot_name=self.name,
-                market_id=market.get("id") or market.get("market_id"),
-                market_question=market.get("question"),
-                side=signal["side"],
-                amount=amount,
-                venue=venue,
-                mode=mode,
-                confidence=signal["confidence"],
-                reasoning=signal.get("reasoning"),
-                trade_id=result.get("trade_id"),
-                shares_bought=result.get("shares_bought"),
-                trade_features=signal.get("features"),
+        total_shares = 0.0
+        slice_results = []
+        for i in range(slices):
+            payload = {
+                "market_id": market.get("id") or market.get("market_id"),
+                "side": signal["side"],
+                "amount": slice_amount,
+                "venue": venue,
+                "source": f"arena:{self.name}",
+                "reasoning": f"{signal.get('reasoning', '')} | TWAP slice {i+1}/{slices}",
+            }
+
+            resp = requests.post(
+                f"{config.SIMMER_BASE_URL}/api/sdk/trade",
+                headers=headers, json=payload, timeout=30
             )
-            amt_s = f"{amount:.4f}" if float(amount) < 0.01 else f"{amount:.2f}"
-            logger.info(f"[{self.name}] Paper trade: {signal['side']} ${amt_s} on {market.get('question', '')[:50]}")
-            
-            return {"success": True, "trade_id": result.get("trade_id")}
-        else:
-            logger.error(f"[{self.name}] Paper trade failed: {resp.status_code} {resp.text[:200]}")
-            return {"success": False, "reason": f"api_error_{resp.status_code}"}
+
+            if resp.status_code in (200, 201):
+                result = resp.json()
+                shares = float(result.get("shares_bought") or 0.0)
+                total_shares += shares
+                slice_results.append(result)
+                db.log_trade(
+                    bot_name=self.name,
+                    market_id=market.get("id") or market.get("market_id"),
+                    market_question=market.get("question"),
+                    side=signal["side"],
+                    amount=slice_amount,
+                    venue=venue,
+                    mode=mode,
+                    confidence=signal["confidence"],
+                    reasoning=payload["reasoning"],
+                    trade_id=result.get("trade_id"),
+                    shares_bought=shares,
+                    trade_features=signal.get("features"),
+                )
+                amt_s = f"{slice_amount:.4f}" if float(slice_amount) < 0.01 else f"{slice_amount:.2f}"
+                logger.info(f"[{self.name}] Paper TWAP slice {i+1}/{slices}: {signal['side']} ${amt_s} on {market.get('question', '')[:50]}")
+            else:
+                logger.error(f"[{self.name}] Paper slice {i+1}/{slices} failed: {resp.status_code} {resp.text[:200]}")
+                return {"success": False, "reason": f"api_error_{resp.status_code}"}
+
+            # Wait between slices except final
+            if i < slices - 1:
+                time.sleep(interval)
+
+        return {"success": True, "trade_id": slice_results[-1].get("trade_id") if slice_results else None, "total_shares": total_shares}
 
     def _execute_live(self, signal, market, amount, mode):
         """Execute directly on Polymarket CLOB (live trading) with professional execution engine."""

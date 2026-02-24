@@ -148,19 +148,23 @@ cp config.v3.example.py config.py
 
 # Configure as variáveis essenciais:
 # - MIN_MARKET_VOLUME = 200000
-# - MAX_MARKET_SPREAD = 0.02
-# - MIN_EV_THRESHOLD = 0.045  # 4.5%
-# - MAX_DRAWDOWN = 0.15       # 15%
+# - MAX_MARKET_SPREAD = 0.025
+# - MIN_EV_THRESHOLD = 0.045
+# - MAX_DRAWDOWN = 0.15
 # - MIN_TRADES_EVOLUTION = 450
+# - BOT_ARENA_PAPER_STARTING_BALANCE = 2000.0
+# - RISK_PROFILE = Moderate
+# - BOT_ARENA_TRADE_MIN_TTE_SECONDS = 21600
+# - BOT_ARENA_TRADE_MAX_TTE_SECONDS = 3888000
 ```
 
 ### 3. Primeira Execução (obrigatório ordem)
 ```bash
-# 1. Descubra mercados qualificados
-python market_discovery.py --scan
+# 1. Descubra mercados qualificados (auto a cada 60min)
+python market_discovery.py --watch --interval 3600
 
 # 2. Teste o edge (paper trading)
-python arena.py --mode paper --markets-file qualified_markets.json
+python arena.py --mode paper
 
 # 3. Rode o backtest profissional
 python professional_backtester.py --period 12months --validation walk-forward
@@ -171,6 +175,13 @@ python dashboard/server.py
 # 5. Monitore via Telegram
 python start_telegram_bot.py
 ```
+ 
+### 5. Critérios de Mercado v3.0
+- Volume mínimo: $150.000
+- Tempo até resolução: 6h–45 dias (ideal 24h–30 dias)
+- Spread estimado: < 2.5%
+- Prioridade: Política EUA 2028, Crypto catalysts, Macro, Sports com dados, Tech eventos
+- Rejeição completa: mercados 5-min BTC/ETH/SOL “Up or Down”
 
 ### 4. Windows (PowerShell)
 ```powershell

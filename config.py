@@ -77,20 +77,26 @@ BTC_5MIN_MARKET_ID = None  # Will be populated by setup.py
 ETH_5MIN_MARKET_ID = None  # Ethereum market ID
 SOL_5MIN_MARKET_ID = None  # Solana market ID
 
-# Risk Limits - Paper Mode (adjusted for $10 bankroll)
 PAPER_MAX_POSITION = _env_float("BOT_ARENA_PAPER_MAX_POSITION", 50.0)
-PAPER_MAX_DAILY_LOSS_PER_BOT = _env_float("BOT_ARENA_PAPER_MAX_DAILY_LOSS_PER_BOT", 2.5)  # 25% of $10 bankroll
-PAPER_MAX_DAILY_LOSS_TOTAL = _env_float("BOT_ARENA_PAPER_MAX_DAILY_LOSS_TOTAL", 6.0)     # 60% of $10 bankroll
-PAPER_STARTING_BALANCE = _env_float("BOT_ARENA_PAPER_STARTING_BALANCE", 10.0)              # $10 default bankroll
+PAPER_MAX_DAILY_LOSS_PER_BOT = _env_float("BOT_ARENA_PAPER_MAX_DAILY_LOSS_PER_BOT", 2.5)
+PAPER_MAX_DAILY_LOSS_TOTAL = _env_float("BOT_ARENA_PAPER_MAX_DAILY_LOSS_TOTAL", 6.0)
+PAPER_STARTING_BALANCE = _env_float("BOT_ARENA_PAPER_STARTING_BALANCE", 2000.0)
 
 # Risk Limits - Live Mode (stricter - proportional to $10k bankroll)
 LIVE_MAX_POSITION = _env_float("BOT_ARENA_LIVE_MAX_POSITION", 10.0)
 LIVE_MAX_DAILY_LOSS_PER_BOT = _env_float("BOT_ARENA_LIVE_MAX_DAILY_LOSS_PER_BOT", 500.0)   # 5% of $10k bankroll
 LIVE_MAX_DAILY_LOSS_TOTAL = _env_float("BOT_ARENA_LIVE_MAX_DAILY_LOSS_TOTAL", 1500.0)   # 15% of $10k bankroll
 
-# Dynamic Loss Limits (based on current capital - for moderate risk profile)
-MAX_LOSS_PCT_PER_BOT = 0.05    # 5% of current bot capital (moderate/conservative)
-MAX_LOSS_PCT_TOTAL = 0.15      # 15% of total current capital (moderate/conservative)
+_risk = os.environ.get("RISK_PROFILE", "Moderate").lower()
+if _risk == "conservative":
+    MAX_LOSS_PCT_PER_BOT = 0.03
+    MAX_LOSS_PCT_TOTAL = 0.10
+elif _risk == "aggressive":
+    MAX_LOSS_PCT_PER_BOT = 0.08
+    MAX_LOSS_PCT_TOTAL = 0.20
+else:
+    MAX_LOSS_PCT_PER_BOT = 0.05
+    MAX_LOSS_PCT_TOTAL = 0.15
 
 # General Risk Rules (both modes)
 MAX_POSITION_PCT_OF_BALANCE = 0.05  # Never bet more than 5% of balance per trade
@@ -99,12 +105,11 @@ MAX_CONSECUTIVE_LOSSES = _env_int("BOT_ARENA_MAX_CONSECUTIVE_LOSSES", 3)  # Paus
 PAUSE_AFTER_CONSECUTIVE_LOSSES_SECONDS = _env_int("BOT_ARENA_PAUSE_AFTER_CONSECUTIVE_LOSSES", 3600)  # Pause for 1 hour
 MAX_TRADES_PER_HOUR_PER_BOT = 20  # Hard cap to prevent overtrading in 5-min markets
 
-# --- V3.0 Market Discovery Engine ---
-MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 10000)              # Min $10k volume to start, will increase to $200k
-MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.05)            # Max 5% spread, will tighten to 2%
-MIN_TIME_TO_RESOLUTION = _env_int("MIN_TIME_TO_RESOLUTION", 24)      # Min 24 hours to resolution
-MAX_TIME_TO_RESOLUTION = _env_int("MAX_TIME_TO_RESOLUTION", 45 * 24) # Max 45 days (in hours)
-PRIORITY_CATEGORIES = [                                              # Keywords for priority categories
+MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 150000)
+MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.025)
+MIN_TIME_TO_RESOLUTION = _env_int("MIN_TIME_TO_RESOLUTION", 6)
+MAX_TIME_TO_RESOLUTION = _env_int("MAX_TIME_TO_RESOLUTION", 45 * 24)
+PRIORITY_CATEGORIES = [
     'politics', 
     'crypto', 
     'sports', 
@@ -129,7 +134,7 @@ PAPER_ENTRY_PRICE_BUFFER = _env_float("BOT_ARENA_PAPER_ENTRY_PRICE_BUFFER", 0.01
 LIVE_ENTRY_PRICE_BUFFER = _env_float("BOT_ARENA_LIVE_ENTRY_PRICE_BUFFER", 0.006)
 PAPER_FEE_RATE = _env_float("BOT_ARENA_PAPER_FEE_RATE", 0.000)
 LIVE_FEE_RATE = _env_float("BOT_ARENA_LIVE_FEE_RATE", 0.000)
-MIN_EXPECTED_VALUE = _env_float("BOT_ARENA_MIN_EXPECTED_VALUE", 0.015)
+MIN_EXPECTED_VALUE = _env_float("BOT_ARENA_MIN_EXPECTED_VALUE", 0.045)
 SKIP_RETRY_SECONDS = _env_int("BOT_ARENA_SKIP_RETRY_SECONDS", 45)
 
 # V3.0 Professional Execution Engine
@@ -142,11 +147,11 @@ EXECUTION_MAX_ORDER_SIZE = _env_float("EXECUTION_MAX_ORDER_SIZE", 1000.0)  # Max
 EXECUTION_TWAP_SLICES = _env_int("EXECUTION_TWAP_SLICES", 4)  # Number of TWAP slices
 EXECUTION_TWAP_INTERVAL_SECONDS = _env_int("EXECUTION_TWAP_INTERVAL_SECONDS", 30)  # TWAP interval
 EXECUTION_ICEBERG_VISIBLE_SIZE = _env_float("EXECUTION_ICEBERG_VISIBLE_SIZE", 0.1)  # 10% visible for iceberg
-EXECUTION_MIN_EV_AFTER_COSTS = _env_float("EXECUTION_MIN_EV_AFTER_COSTS", 0.045)  # Min 4.5% EV after costs
+EXECUTION_MIN_EV_AFTER_COSTS = _env_float("EXECUTION_MIN_EV_AFTER_COSTS", 0.045)
 
 # Market timing window (avoid entering too close to close or too far in advance)
-TRADE_MIN_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MIN_TTE_SECONDS", 30)
-TRADE_MAX_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MAX_TTE_SECONDS", 8 * 60)
+TRADE_MIN_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MIN_TTE_SECONDS", 21600)
+TRADE_MAX_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MAX_TTE_SECONDS", 3888000)
 
 # Online edge model
 MODEL_LR = 0.05

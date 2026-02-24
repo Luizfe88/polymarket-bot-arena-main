@@ -433,59 +433,67 @@ def load_api_key():
 
 
 def discover_markets(api_key):
-    """Find active BTC, ETH, SOL, XRP 5-min up/down markets."""
+    """Discover high-quality markets using v3.0 qualified_markets.json if available."""
+    import os
+    qualified_path = Path(__file__).parent / "qualified_markets.json"
+    if qualified_path.exists():
+        try:
+            with open(qualified_path, "r", encoding="utf-8") as f:
+                markets = json.load(f)
+            logger.info(f"Loaded {len(markets)} markets from qualified_markets.json")
+            return markets
+        except Exception as e:
+            logger.error(f"Failed to load qualified_markets.json: {e}")
+
+    # Fallback: keep old Simmer BTC 5-min discovery for backward compatibility
     import requests
     markets = []
     crypto_found = {"btc": 0, "eth": 0, "sol": 0, "xrp": 0}
-    
+
     try:
         headers = {"Authorization": f"Bearer {api_key}"}
         resp = requests.get(
             f"{config.SIMMER_BASE_URL}/api/sdk/markets",
             headers=headers,
-            params={"status": "active", "limit": 200},  # Increased limit for more markets
+            params={"status": "active", "limit": 200},
             timeout=15,
         )
         if resp.status_code == 200:
             data = resp.json()
             markets_list = data if isinstance(data, list) else data.get("markets", [])
-            
+
             for m in markets_list:
                 q = m.get("question", "").lower()
                 has_5min = any(kw in q for kw in config.TARGET_MARKET_KEYWORDS)
-                
+
                 if has_5min:
-                    # Check for Bitcoin/BTC
                     has_btc = any(term in q for term in ["btc", "bitcoin", "bitcoin up or down"])
                     if has_btc:
                         markets.append(m)
                         crypto_found["btc"] += 1
                         continue
-                    
-                    # Check for Ethereum/ETH
+
                     has_eth = any(term in q for term in ["eth", "ethereum", "ethereum up or down"])
                     if has_eth:
                         markets.append(m)
                         crypto_found["eth"] += 1
                         continue
-                    
-                    # Check for Solana/SOL
+
                     has_sol = any(term in q for term in ["sol", "solana", "solana up or down"])
                     if has_sol:
                         markets.append(m)
                         crypto_found["sol"] += 1
                         continue
 
-                    # Check for Ripple/XRP
                     has_xrp = any(term in q for term in ["xrp", "ripple", "ripple up or down"])
                     if has_xrp:
                         markets.append(m)
                         crypto_found["xrp"] += 1
                         continue
-                        
+
     except Exception as e:
         logger.error(f"Market discovery error: {e}")
-    
+
     logger.info(f"Discovered markets - BTC: {crypto_found['btc']}, ETH: {crypto_found['eth']}, SOL: {crypto_found['sol']}")
     return markets
 
@@ -1091,59 +1099,13 @@ def main_loop(bots, api_key):
             # (agora com bots ativos registrados)
             evolution_integration.check_and_trigger_evolution_if_needed()
 
-            # Discover active markets (any key works for read-only)
             markets = discover_markets(api_key)
             if not markets:
-                logger.debug("No active 5-min markets found, waiting...")
-                # Position monitor thread handles SL/TP independently
-                time.sleep(30)
+                logger.info("No qualified markets found, waiting for next discovery cycle...")
+                time.sleep(60)
                 continue
 
-            # Filter to strict 5-minute window markets only
-            five_min_markets = [m for m in markets if is_5min_market_obj(m)]
-            if not five_min_markets:
-                now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
-                min_tte = None
-                max_tte = None
-                earliest_close = None
-                latest_close = None
-                has_close = 0
-                in_window = 0
-                for m in markets:
-                    close_dt = _parse_resolves_at(m.get("resolves_at"))
-                    if not close_dt:
-                        close_dt = _parse_question_end_time_utc(m.get("question", ""))
-                    if not close_dt:
-                        continue
-                    has_close += 1
-                    tte = (close_dt - now_dt).total_seconds()
-                    if min_tte is None or tte < min_tte:
-                        min_tte = tte
-                        earliest_close = close_dt
-                    if max_tte is None or tte > max_tte:
-                        max_tte = tte
-                        latest_close = close_dt
-                    if config.TRADE_MIN_TTE_SECONDS <= tte <= config.TRADE_MAX_TTE_SECONDS:
-                        in_window += 1
-
-                sample = (markets[0].get("question") or "")[:120] if markets else ""
-                if has_close:
-                    logger.info(
-                        f"Found {len(markets)} BTC markets but none matched strict 5-min window filter "
-                        f"(window={config.TRADE_MIN_TTE_SECONDS}-{config.TRADE_MAX_TTE_SECONDS}s, in_window={in_window}/{has_close}, "
-                        f"earliest_close_utc={earliest_close.isoformat() if earliest_close else '-'}, "
-                        f"latest_close_utc={latest_close.isoformat() if latest_close else '-'}, "
-                        f"min_tte_s={int(min_tte) if min_tte is not None else '-'}, max_tte_s={int(max_tte) if max_tte is not None else '-'}, "
-                        f"sample='{sample}')"
-                    )
-                else:
-                    logger.info(
-                        f"Found {len(markets)} BTC markets but none matched strict 5-min window filter "
-                        f"(window={config.TRADE_MIN_TTE_SECONDS}-{config.TRADE_MAX_TTE_SECONDS}s, no_close_times, sample='{sample}')"
-                    )
-                time.sleep(30)
-                continue
-            logger.info(f"Trading on {len(five_min_markets)} markets this cycle (of {len(markets)} discovered)")
+            logger.info(f"Trading on {len(markets)} markets this cycle")
 
             # Gather signals for multiple crypto markets
             # Detect crypto type from market question
@@ -1160,7 +1122,7 @@ def main_loop(bots, api_key):
             
             # Get signals for each crypto type found in markets
             crypto_types = set()
-            for market in five_min_markets:
+            for market in markets:
                 crypto_types.add(get_crypto_type(market.get("question", "")))
             
             # Collect signals for all crypto types
