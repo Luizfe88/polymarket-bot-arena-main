@@ -9,17 +9,17 @@ import config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def fetch_all_markets(max_pages=8):
-    """Busca mercados ativos, priorizando futuros"""
+def fetch_future_markets(max_pages=5):
+    """Busca mercados futuros ativos (que ainda não expiraram)"""
     all_markets = []
     page = 0
 
     try:
-        logging.info("Fetching active markets from Gamma Markets API...")
+        logging.info("Fetching future markets from Gamma Markets API...")
 
         now = datetime.now(timezone.utc)
-        # Buscar mercados que ainda não expiraram (a partir de hoje)
-        start_date = now.isoformat()
+        # Buscar mercados que ainda não expiraram (a partir de amanhã)
+        tomorrow = (now + timedelta(days=1)).isoformat()
         # Limite de 45 dias no futuro
         future_date = (now + timedelta(days=45)).isoformat()
 
@@ -28,9 +28,57 @@ def fetch_all_markets(max_pages=8):
             params = {
                 "limit": 100,
                 "offset": page * 100,
-                "endDateMin": start_date,  # Mercados futuros
+                "endDateMin": tomorrow,  # Mercados futuros (a partir de amanhã)
                 "endDateMax": future_date,
                 "active": "true",
+                "closed": "false",  # Não fechados
+                "orderBy": "volume",  # Ordenar por volume
+                "orderDirection": "desc"  # Maior volume primeiro
+            }
+
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+
+            response = requests.get(url, params=params, headers=headers, timeout=15)
+            response.raise_for_status()
+
+            markets_on_page = response.json()
+            if not markets_on_page:
+                logging.info("No more markets found. Stopping.")
+                break
+
+            all_markets.extend(markets_on_page)
+            logging.info(f"Fetched {len(markets_on_page)} markets. Total fetched: {len(all_markets)}")
+
+            if len(markets_on_page) < 100:
+                logging.info("Reached end of available markets.")
+                break
+
+            page += 1
+
+        logging.info(f"Successfully fetched a total of {len(all_markets)} future markets from Gamma API.")
+        return all_markets
+
+    except Exception as e:
+        logging.error(f"Failed to fetch markets from Gamma API: {e}")
+        return []
+
+def fetch_active_markets(max_pages=3):
+    """Busca mercados ativos com liquidez"""
+    all_markets = []
+    page = 0
+
+    try:
+        logging.info("Fetching active markets with liquidity...")
+
+        while page < max_pages:
+            url = "https://gamma-api.polymarket.com/markets"
+            params = {
+                "limit": 100,
+                "offset": page * 100,
+                "active": "true",
+                "closed": "false",
                 "orderBy": "volume",  # Ordenar por volume
                 "orderDirection": "desc"  # Maior volume primeiro
             }
@@ -159,6 +207,8 @@ def filter_markets(markets):
 
             end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
             time_to_resolution = end_date - now
+            if time_to_resolution.total_seconds() <= 0:
+                continue
             spread = calculate_spread(market)
             
             # Mapear categoria
@@ -206,11 +256,20 @@ def save_qualified_markets(markets, filename="qualified_markets.json"):
         logging.error(f"Failed to save qualified markets to {filename}: {e}")
 
 def run_scan_and_save():
-    all_markets = fetch_all_markets()
-    if not all_markets:
-        logging.error("No markets were fetched. Cannot proceed with filtering.")
-        return False
-    qualified = filter_markets(all_markets)
+    # Primeiro tentar buscar mercados futuros
+    future_markets = fetch_future_markets()
+    if future_markets:
+        logging.info(f"Using {len(future_markets)} future markets for filtering")
+        qualified = filter_markets(future_markets)
+    else:
+        # Se não houver mercados futuros, buscar mercados ativos
+        logging.info("No future markets found, trying active markets...")
+        active_markets = fetch_active_markets()
+        if not active_markets:
+            logging.error("No markets were fetched. Cannot proceed with filtering.")
+            return False
+        qualified = filter_markets(active_markets)
+    
     save_qualified_markets(qualified)
     return True
 

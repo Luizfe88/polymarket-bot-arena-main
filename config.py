@@ -105,8 +105,8 @@ MAX_CONSECUTIVE_LOSSES = _env_int("BOT_ARENA_MAX_CONSECUTIVE_LOSSES", 3)  # Paus
 PAUSE_AFTER_CONSECUTIVE_LOSSES_SECONDS = _env_int("BOT_ARENA_PAUSE_AFTER_CONSECUTIVE_LOSSES", 3600)  # Pause for 1 hour
 MAX_TRADES_PER_HOUR_PER_BOT = 20  # Hard cap to prevent overtrading in 5-min markets
 
-MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 150000)
-MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.025)
+MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 50000)  # Reduzido de 150k para 50k para mais liquidez
+MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.05)  # Aumentado de 2.5% para 5% para mais oportunidades
 MIN_TIME_TO_RESOLUTION = _env_int("MIN_TIME_TO_RESOLUTION", 6)
 MAX_TIME_TO_RESOLUTION = _env_int("MAX_TIME_TO_RESOLUTION", 45 * 24)
 PRIORITY_CATEGORIES = [
@@ -114,7 +114,8 @@ PRIORITY_CATEGORIES = [
     'crypto', 
     'sports', 
     'macro', 
-    'tech'
+    'tech',
+    'unknown'
 ]
 
 MIN_TRADE_AMOUNT = _env_float("BOT_ARENA_MIN_TRADE_AMOUNT", 0.01)  # Minimum trade amount

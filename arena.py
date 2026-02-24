@@ -1117,13 +1117,14 @@ def main_loop(bots, api_key):
                     return "sol"
                 elif any(term in q for term in ["xrp", "ripple"]):
                     return "xrp"
-                else:
-                    return "btc"  # Default to BTC
+                return None
             
             # Get signals for each crypto type found in markets
             crypto_types = set()
             for market in markets:
-                crypto_types.add(get_crypto_type(market.get("question", "")))
+                ct = get_crypto_type(market.get("question", ""))
+                if ct:
+                    crypto_types.add(ct)
             
             # Collect signals for all crypto types
             all_price_signals = {}
@@ -1142,14 +1143,14 @@ def main_loop(bots, api_key):
             now_ts = time.time()
             if skip_cache:
                 skip_cache = {k: v for k, v in skip_cache.items() if (now_ts - v) < skip_retry}
-            for market in five_min_markets:
+            for market in markets:
                 market_id = market.get("id") or market.get("market_id")
                 of_signals = orderflow_feed.get_signals(market_id, api_key)
                 
                 # Get crypto type for this market and use appropriate signals
                 crypto_type = get_crypto_type(market.get("question", ""))
-                price_signals = all_price_signals.get(crypto_type, {})
-                sent_signals = all_sent_signals.get(crypto_type, {})
+                price_signals = all_price_signals.get(crypto_type, {}) if crypto_type else {}
+                sent_signals = all_sent_signals.get(crypto_type, {}) if crypto_type else {}
                 combined_signals = {**price_signals, **sent_signals, **of_signals}
 
                 # Each bot trades independently on its own account

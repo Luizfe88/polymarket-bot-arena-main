@@ -9,17 +9,17 @@ import config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def fetch_all_markets(max_pages=8):
-    """Busca mercados ativos, priorizando futuros"""
+def fetch_future_markets(max_pages=5):
+    """Busca apenas mercados futuros válidos"""
     all_markets = []
     page = 0
 
     try:
-        logging.info("Fetching active markets from Gamma Markets API...")
+        logging.info("Fetching future markets from Gamma Markets API...")
 
         now = datetime.now(timezone.utc)
-        # Buscar mercados que ainda não expiraram (a partir de hoje)
-        start_date = now.isoformat()
+        # Buscar mercados que começam a partir de amanhã
+        tomorrow = (now + timedelta(days=1)).isoformat()
         # Limite de 45 dias no futuro
         future_date = (now + timedelta(days=45)).isoformat()
 
@@ -28,9 +28,10 @@ def fetch_all_markets(max_pages=8):
             params = {
                 "limit": 100,
                 "offset": page * 100,
-                "endDateMin": start_date,  # Mercados futuros
+                "endDateMin": tomorrow,  # Mercados futuros
                 "endDateMax": future_date,
                 "active": "true",
+                "closed": "false",
                 "orderBy": "volume",  # Ordenar por volume
                 "orderDirection": "desc"  # Maior volume primeiro
             }
@@ -56,7 +57,7 @@ def fetch_all_markets(max_pages=8):
 
             page += 1
 
-        logging.info(f"Successfully fetched a total of {len(all_markets)} active markets from Gamma API.")
+        logging.info(f"Successfully fetched a total of {len(all_markets)} future markets from Gamma API.")
         return all_markets
 
     except Exception as e:
@@ -75,7 +76,7 @@ def calculate_spread(market):
         return 1.0
 
 def _is_rejected_short_crypto(market, now):
-    """Rejeita mercados de crypto com janelas muito curtas (5min)"""
+    """Rejeita mercados de crypto com janelas muito curtas"""
     q = (market.get("question") or "").lower()
     assets = ["bitcoin", "btc", "ethereum", "eth", "solana", "sol", "crypto"]
     short_kw = ["up or down", "up/down", "5 min", "5-min", "5min", "next hour", "next 60 minutes"]
@@ -124,14 +125,14 @@ def _map_category_to_priority(category):
     
     return category
 
-def filter_markets(markets):
-    """Filtra mercados com critérios v3.0"""
+def filter_markets_v3(markets):
+    """Filtra mercados com critérios v3.0 otimizados"""
     qualified_markets = []
     now = datetime.now(timezone.utc)
 
-    # Usar valores do config (já atualizados)
-    min_volume = getattr(config, "MIN_MARKET_VOLUME", 50000)
-    max_spread = getattr(config, "MAX_MARKET_SPREAD", 0.05)
+    # Critérios mais flexíveis para conseguir mercados válidos
+    min_volume = getattr(config, "MIN_MARKET_VOLUME", 50000)  # Reduzido de 150k para 50k
+    max_spread = getattr(config, "MAX_MARKET_SPREAD", 0.05)  # Aumentado de 2.5% para 5%
     min_hours = getattr(config, "MIN_TIME_TO_RESOLUTION", 6)
     max_hours = getattr(config, "MAX_TIME_TO_RESOLUTION", 45 * 24)
     priority_categories = getattr(config, "PRIORITY_CATEGORIES", ["politics", "crypto", "sports", "macro", "tech"])
@@ -181,13 +182,12 @@ def filter_markets(markets):
                 qualified_markets.append(market)
                 logging.info(f"  [QUALIFIED] {market.get('question')} (Vol ${volume:,.0f}, Spread {spread:.2%}, Cat {mapped_category})")
             else:
-                # Log detalhado do porquê foi rejeitado (apenas em debug)
+                # Log detalhado do porquê foi rejeitado
                 reasons = []
-                if not volume_ok: reasons.append(f"volume")
-                if not spread_ok: reasons.append(f"spread")
-                if not tte_ok: reasons.append(f"TTE")
-                if not category_ok: reasons.append(f"category")
-                if _is_rejected_short_crypto(market, now): reasons.append(f"crypto_5min")
+                if not volume_ok: reasons.append(f"volume ${volume:,.0f} < ${min_volume:,.0f}")
+                if not spread_ok: reasons.append(f"spread {spread:.2%} > {max_spread:.2%}")
+                if not tte_ok: reasons.append(f"TTE {time_to_resolution}")
+                if not category_ok: reasons.append(f"category {mapped_category} not in {priority_categories}")
                 logging.debug(f"  [REJECTED] {reasons}")
 
         except Exception as e:
@@ -206,22 +206,22 @@ def save_qualified_markets(markets, filename="qualified_markets.json"):
         logging.error(f"Failed to save qualified markets to {filename}: {e}")
 
 def run_scan_and_save():
-    all_markets = fetch_all_markets()
+    all_markets = fetch_future_markets()
     if not all_markets:
         logging.error("No markets were fetched. Cannot proceed with filtering.")
         return False
-    qualified = filter_markets(all_markets)
+    qualified = filter_markets_v3(all_markets)
     save_qualified_markets(qualified)
     return True
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Market Discovery v3.0")
+    parser = argparse.ArgumentParser(description="Market Discovery v3.0 - Otimizado")
     parser.add_argument("--scan", action="store_true", help="Executa uma varredura única e salva mercados qualificados")
     parser.add_argument("--watch", action="store_true", help="Executa automaticamente a cada 60 minutos")
     parser.add_argument("--interval", type=int, default=3600, help="Intervalo em segundos para modo watch")
     args = parser.parse_args()
 
-    logging.info("Starting Polymarket Bot Arena v3.0 - Market Discovery Engine")
+    logging.info("Starting Polymarket Bot Arena v3.0 - Market Discovery Engine (Otimizado)")
 
     if args.watch:
         while True:
