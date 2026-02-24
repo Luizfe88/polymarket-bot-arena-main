@@ -19,9 +19,9 @@ def fetch_all_markets(max_pages=8):
 
         now = datetime.now(timezone.utc)
         # Buscar mercados que ainda não expiraram (a partir de hoje)
-        start_date = now.isoformat()
+        start_date = now.strftime("%Y-%m-%dT%H:%M:%SZ")
         # Limite de 45 dias no futuro
-        future_date = (now + timedelta(days=45)).isoformat()
+        future_date = (now + timedelta(days=45)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         while page < max_pages:
             url = "https://gamma-api.polymarket.com/markets"
@@ -31,7 +31,9 @@ def fetch_all_markets(max_pages=8):
                 "endDateMin": start_date,  # Mercados futuros
                 "endDateMax": future_date,
                 "active": "true",
-                "orderBy": "volume",  # Ordenar por volume
+                "closed": "false",
+                "archived": "false",
+                "orderBy": "liquidity",  # Ordenar por liquidez atual
                 "orderDirection": "desc"  # Maior volume primeiro
             }
 
@@ -147,9 +149,9 @@ def filter_markets(markets):
             volume = float(market.get("volume", 0))
             raw_category = market.get("category", "unknown")
             end_date_str = market.get("endDate")
-            is_active = bool(market.get("active", False))
+            is_active = True   # forçado true pra teste (remover depois)
 
-            if not end_date_str or not is_active:
+            if not end_date_str:   # tirei o "or not is_active"
                 continue
 
             # Rejeitar mercados de crypto de curto prazo
@@ -159,6 +161,12 @@ def filter_markets(markets):
 
             end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
             time_to_resolution = end_date - now
+            
+            # Temporariamente aceitar mercados antigos para teste
+            # if time_to_resolution.total_seconds() < 0:
+            #     logging.debug(f"  [REJECTED] market already resolved: {market.get('question')} (TTE: {time_to_resolution})")
+            #     continue
+                
             spread = calculate_spread(market)
             
             # Mapear categoria
@@ -172,7 +180,9 @@ def filter_markets(markets):
             # Verificar se o mercado está dentro dos critérios
             volume_ok = volume >= min_volume
             spread_ok = spread <= max_spread
-            tte_ok = timedelta(hours=min_hours) <= time_to_resolution <= timedelta(hours=max_hours)
+            # Temporariamente aceitar mercados antigos para teste
+            # tte_ok = timedelta(hours=min_hours) <= time_to_resolution <= timedelta(hours=max_hours)
+            tte_ok = True  # Aceitar todos os tempos temporariamente
             category_ok = not priority_categories or mapped_category in priority_categories
 
             if volume_ok and spread_ok and tte_ok and category_ok:
