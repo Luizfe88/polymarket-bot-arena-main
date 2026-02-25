@@ -93,7 +93,7 @@ class BaseBot(ABC):
         """
         pass
 
-    def make_decision(self, market: dict, signals: dict) -> dict:
+    def make_decision(self, market: dict, signals: dict, kelly_fraction=None) -> dict:
         market_price = market.get("current_price", 0.5)
         try:
             market_price = float(market_price)
@@ -218,7 +218,7 @@ class BaseBot(ABC):
             }
 
         max_pos = config.get_max_position()
-        k_frac = getattr(config, "KELLY_FRACTION", 0.5)
+        k_frac = kelly_fraction if kelly_fraction is not None else getattr(config, "KELLY_FRACTION", 0.5)
         k_yes = (p_yes - p_eff_yes) / max(1e-6, (1.0 - p_eff_yes))
         k_no = ((1.0 - p_yes) - p_eff_no) / max(1e-6, (1.0 - p_eff_no))
         k = k_yes if side == "yes" else k_no

@@ -65,6 +65,33 @@ class ArenaRiskManager:
 
         return limits
 
+    def get_dynamic_kelly_fraction(self) -> float:
+        """
+        Retorna fração de Kelly ajustada pelo drawdown.
+        Reduz agressivamente conforme nos aproximamos do MAX_DRAWDOWN.
+        """
+        base_kelly = getattr(config, "KELLY_FRACTION", 0.10)
+        
+        # Calculate current drawdown
+        peak = self._get_peak_bankroll()
+        current = self.bankroll or peak
+        if peak <= 0: return base_kelly
+        
+        drawdown = (peak - current) / peak
+        drawdown = max(0.0, drawdown)
+        
+        max_dd = getattr(config, "MAX_DRAWDOWN", 0.15)
+        
+        # Se drawdown > max, corta para 10% do base
+        if drawdown >= max_dd:
+            return base_kelly * 0.1
+            
+        # Scaling linear: 0% dd -> 100% kelly, 15% dd -> 10% kelly
+        dd_ratio = drawdown / max_dd
+        scaling_factor = max(0.1, 1.0 - (dd_ratio * 0.9))
+        
+        return base_kelly * scaling_factor
+
     def _get_peak_bankroll(self):
         try:
             with open("arena_peak.json") as f:

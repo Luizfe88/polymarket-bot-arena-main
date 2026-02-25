@@ -27,6 +27,7 @@ class BacktestMode(Enum):
     WALK_FORWARD = "walk_forward"
     EXPANDING_WINDOW = "expanding_window"
     FIXED_WINDOW = "fixed_window"
+    STRICT_SPLIT = "strict_split"  # Train/Val/Test split
 
 @dataclass
 class BacktestConfig:
@@ -40,6 +41,8 @@ class BacktestConfig:
     max_correlation: float = 0.7     # Maximum correlation between strategies
     regime_detection: bool = True      # Enable regime detection
     execution_modeling: bool = True  # Model execution costs and slippage
+    # Strict split ratios (e.g. 8 months train, 2 val, 2 test -> 0.67, 0.17, 0.16)
+    split_ratios: Tuple[float, float, float] = (0.66, 0.17, 0.17)
 
 @dataclass
 class BacktestResult:
@@ -190,7 +193,76 @@ class ProfessionalBacktester:
         self.regimes = regimes
         logger.info(f"Detected {len(regimes)} market regimes")
         return regimes
-    
+
+    def check_data_leakage(self, train_data: pd.DataFrame, test_data: pd.DataFrame) -> bool:
+        """
+        Verify no data leakage between train and test sets.
+        Returns True if safe, raises ValueError if leakage detected.
+        """
+        train_max = train_data['timestamp'].max()
+        test_min = test_data['timestamp'].min()
+        
+        if train_max >= test_min:
+            logger.error(f"🚨 DATA LEAKAGE DETECTED: Train ends {train_max} >= Test starts {test_min}")
+            raise ValueError(f"Data leakage: Train set overlaps with Test set")
+            
+        logger.info(f"✅ Data integrity check passed: Train ends {train_max} < Test starts {test_min}")
+        return True
+
+    def run_strict_split_test(self, bot, market_data: pd.DataFrame) -> Dict[str, BacktestResult]:
+        """
+        Run strict temporal split backtest (Train -> Val -> Test)
+        Test set is NEVER used for optimization.
+        """
+        # Sort by time just in case
+        market_data = market_data.sort_values('timestamp')
+        
+        total_rows = len(market_data)
+        ratios = self.config.split_ratios
+        
+        train_end_idx = int(total_rows * ratios[0])
+        val_end_idx = int(total_rows * (ratios[0] + ratios[1]))
+        
+        train_data = market_data.iloc[:train_end_idx]
+        val_data = market_data.iloc[train_end_idx:val_end_idx]
+        test_data = market_data.iloc[val_end_idx:]
+        
+        # Verify integrity
+        self.check_data_leakage(train_data, val_data)
+        self.check_data_leakage(val_data, test_data)
+        
+        logger.info(f"Running Strict Split Backtest:")
+        logger.info(f"  Train: {len(train_data)} rows ({train_data['timestamp'].min()} - {train_data['timestamp'].max()})")
+        logger.info(f"  Val:   {len(val_data)} rows ({val_data['timestamp'].min()} - {val_data['timestamp'].max()})")
+        logger.info(f"  Test:  {len(test_data)} rows ({test_data['timestamp'].min()} - {test_data['timestamp'].max()})")
+        
+        # Detect regimes
+        regimes = self.detect_market_regimes(market_data)
+        
+        results = {}
+        
+        # 1. Train (Optimization would happen here)
+        # For this simulation, we just run the bot to see baseline
+        logger.info("Phase 1: Training (Baseline)")
+        # train_res = self._simulate_bot_trading(bot, train_data, regimes) # Optional
+        
+        # 2. Validation (Hyperparameter tuning)
+        logger.info("Phase 2: Validation")
+        val_res = self._simulate_bot_trading(bot, val_data, regimes)
+        results['validation'] = val_res
+        
+        # 3. Test (Final Evaluation - untouched until now)
+        logger.info("Phase 3: Final Test (Hold-out)")
+        test_res = self._simulate_bot_trading(bot, test_data, regimes)
+        results['test'] = test_res
+        
+        if test_res:
+            logger.info(f"🎯 FINAL TEST RESULT: Sharpe={test_res.sharpe_ratio:.2f}, Return={test_res.total_pnl:.2f}, Trades={test_res.total_trades}")
+        else:
+            logger.warning("⚠️ FINAL TEST: No trades executed or insufficient data")
+            
+        return results
+
     def calculate_execution_costs(self, trade_size: float, market_data: pd.Series) -> Dict[str, float]:
         """
         Calculate realistic execution costs including spread, slippage, and fees

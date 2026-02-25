@@ -109,7 +109,7 @@ MAX_TRADES_PER_HOUR_PER_BOT = 20  # Hard cap to prevent overtrading in 5-min mar
 MAX_RISK_PER_TRADE = _env_float("MAX_RISK_PER_TRADE", 0.03)  # 3% da banca por trade completo
 MAX_EXPOSURE_PER_MARKET = _env_float("MAX_EXPOSURE_PER_MARKET", 0.10)
 MAX_POSITION_PER_BOT = _env_float("MAX_POSITION_PER_BOT", 100)
-KELLY_FRACTION = _env_float("KELLY_FRACTION", 0.25)
+KELLY_FRACTION = _env_float("KELLY_FRACTION", 0.10)  # Conservador para início
 
 MIN_MARKET_VOLUME = _env_int("MIN_MARKET_VOLUME", 15000)
 MAX_MARKET_SPREAD = _env_float("MAX_MARKET_SPREAD", 0.15)

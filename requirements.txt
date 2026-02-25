@@ -16,3 +16,12 @@ typing_extensions==4.15.0
 urllib3_secure_extra==0.1.0
 uvicorn==0.41.0
 websocket_client==1.9.0
+
+# Dev/Test Dependencies
+pytest==8.0.0
+pytest-cov==4.1.0
+pytest-asyncio==0.23.5
+flake8==7.0.0
+black==24.1.1
+mypy==1.8.0
+detect-secrets==1.4.0

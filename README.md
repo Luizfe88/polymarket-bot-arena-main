@@ -17,9 +17,9 @@ O Polymarket Bot Arena v3.0 é uma plataforma de trading algorítmico **lucrativ
 - **Edge informacional institucional** (LLM avançado + whale tracking + bayesian updates)
 - **Execução profissional** (limit orders inteligentes, custos reais modelados)
 - **Evolução genética robusta** (450+ trades, walk-forward validation)
-- **Gestão de risco institucional** (Kelly modificado, regime detection, drawdown < 15%)
+- **Gestão de risco institucional** (Kelly dinâmico, regime detection, drawdown < 15%)
 
-**Target**: +15% a +40% lucro líquido mensal após todas as fees e slippage.
+**Target**: Metas realistas baseadas em dados (Sharpe > 1.0, retorno anual 20-40%).
 
 ## 🏗️ Arquitetura v3.0
 
@@ -198,7 +198,7 @@ Acesse http://localhost:8000 para:
 - **🤖 Status dos Bots**: Edge % atual, confiança, últimos sinais
 - **📋 Mercados Ativos**: Volume, spread, tempo até resolução
 - **⚙️ Regime Detection**: Chop vs trending, volatilidade implícita
-- **🎯 Alvos de Lucro**: +15% a +40% mensal, drawdown < 15%
+- **🎯 Alvos de Lucro**: Sharpe > 1.0, Retorno anual 20-40%, drawdown < 15%
 
 ## 🧪 Testes e Validação v3.0
 
@@ -291,11 +291,10 @@ ENABLE_BAYESIAN=true        # Ativa updates probabilísticos
 
 ## 📊 Métricas de Performance v3.0
 
-### Targets Mensais (após todas as fees)
-- **Retorno**: +15% a +40%
-- **Sharpe Ratio**: > 1.2
-- **Calmar Ratio**: > 1.0
-- **Drawdown Máximo**: < 15%
+### Targets (após todas as fees)
+- **Retorno Anual**: 20-40% (estimado)
+- **Sharpe Ratio**: > 1.0
+- **Max Drawdown**: < 15%
 - **Win Rate**: > 52% (com EV positivo)
 - **Profit Factor**: > 1.3
 

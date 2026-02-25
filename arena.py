@@ -38,6 +38,63 @@ TRADE_INTERVAL = 60    # Discover markets + place trades every 60s
 FAST_POLL_INTERVAL = 0.5  # Poll market prices for SL/TP exits every 0.5s
 
 
+def run_startup_health_checks():
+    errors = []
+    warnings = []
+
+    # Simmer API key (obrigatória para qualquer modo de trading)
+    try:
+        if not config.SIMMER_API_KEY_PATH.exists():
+            errors.append(f"Arquivo de credenciais Simmer não encontrado em {config.SIMMER_API_KEY_PATH}")
+        else:
+            try:
+                with open(config.SIMMER_API_KEY_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if not data.get("api_key"):
+                    errors.append(f"Credenciais Simmer inválidas: campo 'api_key' ausente em {config.SIMMER_API_KEY_PATH}")
+            except Exception as e:
+                errors.append(f"Erro ao ler SIMMER_API_KEY_PATH: {e}")
+    except Exception as e:
+        errors.append(f"Erro ao verificar SIMMER_API_KEY_PATH: {e}")
+
+    # Chave Polymarket (obrigatória apenas em modo live)
+    try:
+        if config.get_current_mode() == "live":
+            if not config.POLYMARKET_KEY_PATH.exists():
+                errors.append(f"Arquivo de chave Polymarket não encontrado em {config.POLYMARKET_KEY_PATH} (modo live)")
+            else:
+                try:
+                    with open(config.POLYMARKET_KEY_PATH, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    if not data.get("private_key"):
+                        errors.append(f"Chave Polymarket inválida: campo 'private_key' ausente em {config.POLYMARKET_KEY_PATH}")
+                except Exception as e:
+                    errors.append(f"Erro ao ler POLYMARKET_KEY_PATH: {e}")
+    except Exception as e:
+        warnings.append(f"Não foi possível validar chave Polymarket: {e}")
+
+    # LLM / Copytrading (opcional, mas recomendado quando recursos estiverem ativos)
+    try:
+        from config import LLM_PROVIDER, LLM_API_KEY
+
+        if LLM_PROVIDER in ("grok", "claude", "gemini") and not LLM_API_KEY:
+            warnings.append(f"LLM_PROVIDER={LLM_PROVIDER} mas LLM_API_KEY está vazio; filtros LLM/copytrading ficarão desativados")
+    except Exception as e:
+        warnings.append(f"Não foi possível validar configuração de LLM/copytrading: {e}")
+
+    for w in warnings:
+        logger.warning(f"[HEALTHCHECK] {w}")
+
+    if errors:
+        for err in errors:
+            logger.error(f"[HEALTHCHECK] {err}")
+        logger.error("Falha nas verificações críticas de credenciais. Abortando inicialização do Arena.")
+        print("❌ Health check falhou. Veja os logs para detalhes.")
+        sys.exit(1)
+    else:
+        logger.info("✅ Health check de credenciais concluído com sucesso.")
+
+
 def create_default_bots():
     """Create the bots from active DB configs (or defaults for first run)."""
     try:
@@ -1178,7 +1235,9 @@ def main_loop(bots, api_key):
                         continue
 
                     try:
-                        signal = bot.make_decision(market, combined_signals)
+                        # Get dynamic Kelly fraction from risk manager
+                        kelly_fraction = risk_manager.get_dynamic_kelly_fraction()
+                        signal = bot.make_decision(market, combined_signals, kelly_fraction=kelly_fraction)
                         decide_count += 1
 
                         # Skip if bot sees no edge
@@ -1245,6 +1304,8 @@ def main():
         import setup
         if not setup.main():
             sys.exit(1)
+
+    run_startup_health_checks()
 
     # Start Telegram bot in a separate thread
     telegram_thread = threading.Thread(target=telegram_bot.main, daemon=True)
