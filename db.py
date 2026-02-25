@@ -329,6 +329,28 @@ def get_active_bot_names():
         ).fetchall()
         return [r["bot_name"] for r in rows]
 
+def migrate_sentiment_to_orderflow():
+    """
+    Converte bots ativos com strategy_type='sentiment' para 'orderflow'
+    e renomeia bot_name de 'sentiment-*' para 'orderflow-*' preservando sufixos.
+    """
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, bot_name FROM bot_configs WHERE active=1 AND strategy_type='sentiment'"
+        ).fetchall()
+        for r in rows:
+            d = dict(r)
+            old_name = d["bot_name"]
+            if old_name.lower().startswith("sentiment"):
+                new_name = "orderflow" + old_name[len("sentiment"):]
+            else:
+                new_name = old_name.replace("sentiment", "orderflow")
+            conn.execute(
+                "UPDATE bot_configs SET strategy_type='orderflow', bot_name=? WHERE id=?",
+                (new_name, d["id"])
+            )
+        conn.commit()
+
 def reset_arena_day(mode="paper"):
     """
     Manually reset daily limits for the given mode:

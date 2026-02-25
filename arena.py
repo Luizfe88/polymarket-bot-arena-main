@@ -18,13 +18,11 @@ import edge_model
 from core.risk_manager import risk_manager
 from bots.bot_momentum import MomentumBot
 from bots.bot_mean_rev import MeanRevBot
-from bots.bot_sentiment import SentimentBot
 from bots.bot_hybrid import HybridBot
 from bots.bot_meanrev_sl import MeanRevSLBot
 from bots.bot_meanrev_tp import MeanRevTPBot
 from bots.bot_orderflow import OrderflowBot
 from signals.price_feed import get_feed as get_price_feed
-from signals.sentiment import get_feed as get_sentiment_feed
 from signals.orderflow import get_feed as get_orderflow_feed
 from copytrading.tracker import WalletTracker
 from copytrading.copier import TradeCopier
@@ -42,6 +40,10 @@ FAST_POLL_INTERVAL = 0.5  # Poll market prices for SL/TP exits every 0.5s
 
 def create_default_bots():
     """Create the bots from active DB configs (or defaults for first run)."""
+    try:
+        db.migrate_sentiment_to_orderflow()
+    except Exception:
+        pass
     active = db.get_active_bots()
     if active:
         try:
@@ -59,7 +61,7 @@ def create_default_bots():
             "mean_reversion": MeanRevBot,
             "mean_reversion_sl": MeanRevSLBot,
             "mean_reversion_tp": MeanRevTPBot,
-            "sentiment": SentimentBot,
+            "sentiment": OrderflowBot,
             "hybrid": HybridBot,
             "orderflow": OrderflowBot,
         }
@@ -99,7 +101,6 @@ def create_evolved_bot(winner, loser_type, gen_number):
     from bots.bot_momentum import DEFAULT_PARAMS as MOMENTUM_DEFAULTS
     from bots.bot_mean_rev import DEFAULT_PARAMS as MEANREV_DEFAULTS
     from bots.bot_hybrid import DEFAULT_PARAMS as HYBRID_DEFAULTS
-    from bots.bot_sentiment import DEFAULT_PARAMS as SENTIMENT_DEFAULTS
     from bots.bot_orderflow import DEFAULT_PARAMS as ORDERFLOW_DEFAULTS
 
     bot_classes = {
@@ -107,7 +108,7 @@ def create_evolved_bot(winner, loser_type, gen_number):
         "mean_reversion": MeanRevBot,
         "mean_reversion_sl": MeanRevSLBot,
         "mean_reversion_tp": MeanRevTPBot,
-        "sentiment": SentimentBot,
+        "sentiment": OrderflowBot,
         "hybrid": HybridBot,
         "orderflow": OrderflowBot,
     }
@@ -117,7 +118,7 @@ def create_evolved_bot(winner, loser_type, gen_number):
         "mean_reversion": MEANREV_DEFAULTS,
         "mean_reversion_sl": MEANREV_DEFAULTS,
         "mean_reversion_tp": MEANREV_DEFAULTS,
-        "sentiment": SENTIMENT_DEFAULTS,
+        "sentiment": ORDERFLOW_DEFAULTS,
         "hybrid": HYBRID_DEFAULTS,
         "orderflow": ORDERFLOW_DEFAULTS,
     }
@@ -240,18 +241,17 @@ def run_regular_evolution(bots, cycle_number):
             from bots.bot_momentum import DEFAULT_PARAMS as MOMENTUM_DEFAULTS
             from bots.bot_mean_rev import DEFAULT_PARAMS as MEANREV_DEFAULTS
             from bots.bot_hybrid import DEFAULT_PARAMS as HYBRID_DEFAULTS
-            from bots.bot_sentiment import DEFAULT_PARAMS as SENTIMENT_DEFAULTS
             from bots.bot_orderflow import DEFAULT_PARAMS as ORDERFLOW_DEFAULTS
             fallback_map = {
                 "momentum": MOMENTUM_DEFAULTS, "mean_reversion": MEANREV_DEFAULTS,
                 "mean_reversion_sl": MEANREV_DEFAULTS, "mean_reversion_tp": MEANREV_DEFAULTS,
-                "sentiment": SENTIMENT_DEFAULTS, "hybrid": HYBRID_DEFAULTS,
+                "sentiment": ORDERFLOW_DEFAULTS, "hybrid": HYBRID_DEFAULTS,
                 "orderflow": ORDERFLOW_DEFAULTS,
             }
             bot_classes = {
                 "momentum": MomentumBot, "mean_reversion": MeanRevBot,
                 "mean_reversion_sl": MeanRevSLBot, "mean_reversion_tp": MeanRevTPBot,
-                "sentiment": SentimentBot, "hybrid": HybridBot,
+                "sentiment": OrderflowBot, "hybrid": HybridBot,
                 "orderflow": OrderflowBot,
             }
             cls = bot_classes.get(dead_bot.strategy_type, MomentumBot)
@@ -1012,11 +1012,9 @@ def market_discovery_loop(interval_seconds=3600):
 def main_loop(bots, api_key):
     """Main trading loop — each bot trades independently on its own Simmer account."""
     price_feed = get_price_feed()
-    sentiment_feed = get_sentiment_feed()
     orderflow_feed = get_orderflow_feed()
 
     price_feed.start()
-    sentiment_feed.start()
     orderflow_feed.start()
 
     evolution_interval = config.EVOLUTION_INTERVAL_HOURS * 3600
@@ -1150,13 +1148,9 @@ def main_loop(bots, api_key):
             
             # Collect signals for all crypto types
             all_price_signals = {}
-            all_sent_signals = {}
-            
             for crypto in crypto_types:
                 price_signals = price_feed.get_signals(crypto)
-                sent_signals = sentiment_feed.get_signals(crypto)
                 all_price_signals[crypto] = price_signals
-                all_sent_signals[crypto] = sent_signals
 
             new_trades = 0
             skip_count = 0
@@ -1172,8 +1166,7 @@ def main_loop(bots, api_key):
                 # Get crypto type for this market and use appropriate signals
                 crypto_type = get_crypto_type(market.get("question", ""))
                 price_signals = all_price_signals.get(crypto_type, {}) if crypto_type else {}
-                sent_signals = all_sent_signals.get(crypto_type, {}) if crypto_type else {}
-                combined_signals = {**price_signals, **sent_signals, **of_signals}
+                combined_signals = {**price_signals, **of_signals}
 
                 # Each bot trades independently on its own account
                 for bot in bots:

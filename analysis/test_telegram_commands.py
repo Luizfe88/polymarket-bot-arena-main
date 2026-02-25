@@ -8,8 +8,8 @@ This script tests the Telegram command handlers without needing to run the full 
 import sys
 from pathlib import Path
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from telegram_commands import commands_handler
 
@@ -33,6 +33,9 @@ def test_commands():
         "/ranking",
         "/performance",
         "/resumo",
+        "/report",
+        "/report_24h",
+        "/report_7d",
         "/unknown_command",  # Should show help
     ]
     

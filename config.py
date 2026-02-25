@@ -137,7 +137,8 @@ PAPER_ENTRY_PRICE_BUFFER = _env_float("BOT_ARENA_PAPER_ENTRY_PRICE_BUFFER", 0.01
 LIVE_ENTRY_PRICE_BUFFER = _env_float("BOT_ARENA_LIVE_ENTRY_PRICE_BUFFER", 0.006)
 PAPER_FEE_RATE = _env_float("BOT_ARENA_PAPER_FEE_RATE", 0.000)
 LIVE_FEE_RATE = _env_float("BOT_ARENA_LIVE_FEE_RATE", 0.000)
-MIN_EXPECTED_VALUE = _env_float("BOT_ARENA_MIN_EXPECTED_VALUE", 0.075)
+# TEMPORÁRIO: Reduzido para gerar primeiros trades - restaurar para 0.075 depois de 100-200 trades
+MIN_EXPECTED_VALUE = _env_float("BOT_ARENA_MIN_EXPECTED_VALUE", -0.005)
 SKIP_RETRY_SECONDS = _env_int("BOT_ARENA_SKIP_RETRY_SECONDS", 45)
 
 # V3.0 Professional Execution Engine
@@ -153,8 +154,10 @@ EXECUTION_ICEBERG_VISIBLE_SIZE = _env_float("EXECUTION_ICEBERG_VISIBLE_SIZE", 0.
 EXECUTION_MIN_EV_AFTER_COSTS = _env_float("EXECUTION_MIN_EV_AFTER_COSTS", MIN_EXPECTED_VALUE)
 
 # Edge/Confidence thresholds (usados para filtrar trades de baixa confiança)
-MIN_EDGE_THRESHOLD = _env_float("MIN_EDGE_THRESHOLD", MIN_EXPECTED_VALUE)
-MIN_CONFIDENCE_THRESHOLD = _env_float("MIN_CONFIDENCE_THRESHOLD", 0.20)
+# TEMPORÁRIO: Reduzido para gerar primeiros trades - restaurar para 0.075 depois de 100-200 trades
+MIN_EDGE_THRESHOLD = _env_float("MIN_EDGE_THRESHOLD", -0.005)
+# TEMPORÁRIO: Reduzido para gerar primeiros trades - restaurar para 0.20 depois de 100-200 trades
+MIN_CONFIDENCE_THRESHOLD = _env_float("MIN_CONFIDENCE_THRESHOLD", 0.10)
 
 # Market timing window (avoid entering too close to close or too far in advance)
 TRADE_MIN_TTE_SECONDS = _env_int("BOT_ARENA_TRADE_MIN_TTE_SECONDS", 21600)

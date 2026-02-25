@@ -79,6 +79,9 @@ class TelegramCommands:
             '/resumo': self.handle_resumo,
             '/evolucao_trades': self.handle_evolucao_trades,
             '/trades_recentes': self.handle_trades_recentes,
+            '/report': self.handle_report,
+            '/report_24h': self.handle_report_24h,
+            '/report_7d': self.handle_report_7d,
         }
     
     def get_current_time_brt(self) -> str:
@@ -742,6 +745,170 @@ class TelegramCommands:
                 
         except Exception as e:
             return f"❌ Erro ao buscar performance: {str(e)}"
+    
+    def handle_report(self, user_id: str) -> str:
+        """Handle /report command - Show most profitable trades (markets)."""
+        try:
+            mode = config.get_current_mode()
+            
+            with db.get_conn() as conn:
+                markets_data = conn.execute("""
+                    SELECT 
+                        market_id,
+                        COALESCE(market_question, market_id) AS question,
+                        SUM(CASE WHEN pnl IS NOT NULL THEN pnl ELSE 0 END) AS total_pnl,
+                        COUNT(*) AS total_trades,
+                        SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN pnl < 0 THEN 1 ELSE 0 END) AS losses,
+                        COUNT(DISTINCT bot_name) AS bots
+                    FROM trades
+                    WHERE mode = ?
+                      AND pnl IS NOT NULL
+                    GROUP BY market_id, question
+                    HAVING total_trades > 0
+                    ORDER BY total_pnl DESC
+                    LIMIT 10
+                """, (mode,)).fetchall()
+            
+            if not markets_data:
+                return "📊 <b>Relatório de Trades</b>\n\n<i>Nenhuma trade com lucro registrada ainda.</i>"
+            
+            message = f"📊 <b>Trades Mais Lucrativas - {mode.upper()}</b>\n"
+            message += f"📅 <b>Atualizado:</b> {self.get_current_time_brt()}\n\n"
+            
+            total_pnl_all = 0.0
+            
+            for m in markets_data:
+                question = m["question"]
+                total_pnl = float(m["total_pnl"] or 0)
+                total_trades = m["total_trades"]
+                wins = m["wins"] or 0
+                losses = m["losses"] or 0
+                bots = m["bots"] or 0
+                
+                total_pnl_all += total_pnl
+                
+                message += f"💹 <b>{question}</b>\n"
+                message += f"   💰 P&L Total: {self.format_currency(total_pnl)}\n"
+                message += f"   🤖 Bots: <code>{bots}</code>\n"
+                message += f"   🎯 Trades: <code>{total_trades}</code> ({wins}W {losses}L)\n\n"
+            
+            message += f"📈 <b>P&L Somado (Top {len(markets_data)} trades):</b> {self.format_currency(total_pnl_all)}\n"
+            
+            return message
+        
+        except Exception as e:
+            return f"❌ Erro ao gerar relatório de trades: {str(e)}"
+    
+    def handle_report_24h(self, user_id: str) -> str:
+        """Handle /report_24h command - Show most profitable trades in last 24 hours."""
+        try:
+            mode = config.get_current_mode()
+            
+            with db.get_conn() as conn:
+                markets_data = conn.execute("""
+                    SELECT 
+                        market_id,
+                        COALESCE(market_question, market_id) AS question,
+                        SUM(CASE WHEN pnl IS NOT NULL THEN pnl ELSE 0 END) AS total_pnl,
+                        COUNT(*) AS total_trades,
+                        SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN pnl < 0 THEN 1 ELSE 0 END) AS losses,
+                        COUNT(DISTINCT bot_name) AS bots
+                    FROM trades
+                    WHERE mode = ?
+                      AND pnl IS NOT NULL
+                      AND created_at >= datetime('now', '-1 day')
+                    GROUP BY market_id, question
+                    HAVING total_trades > 0
+                    ORDER BY total_pnl DESC
+                    LIMIT 10
+                """, (mode,)).fetchall()
+            
+            if not markets_data:
+                return "📊 <b>Relatório 24h</b>\n\n<i>Nenhuma trade lucrativa nas últimas 24 horas.</i>"
+            
+            message = f"📊 <b>Trades Mais Lucrativas (24h) - {mode.upper()}</b>\n"
+            message += f"📅 <b>Atualizado:</b> {self.get_current_time_brt()}\n\n"
+            
+            total_pnl_all = 0.0
+            
+            for m in markets_data:
+                question = m["question"]
+                total_pnl = float(m["total_pnl"] or 0)
+                total_trades = m["total_trades"]
+                wins = m["wins"] or 0
+                losses = m["losses"] or 0
+                bots = m["bots"] or 0
+                
+                total_pnl_all += total_pnl
+                
+                message += f"💹 <b>{question}</b>\n"
+                message += f"   💰 P&L 24h: {self.format_currency(total_pnl)}\n"
+                message += f"   🤖 Bots: <code>{bots}</code>\n"
+                message += f"   🎯 Trades: <code>{total_trades}</code> ({wins}W {losses}L)\n\n"
+            
+            message += f"📈 <b>P&L Somado (Top {len(markets_data)} trades):</b> {self.format_currency(total_pnl_all)}\n"
+            
+            return message
+        
+        except Exception as e:
+            return f"❌ Erro ao gerar relatório 24h: {str(e)}"
+    
+    def handle_report_7d(self, user_id: str) -> str:
+        """Handle /report_7d command - Show most profitable trades in last 7 days."""
+        try:
+            mode = config.get_current_mode()
+            
+            with db.get_conn() as conn:
+                markets_data = conn.execute("""
+                    SELECT 
+                        market_id,
+                        COALESCE(market_question, market_id) AS question,
+                        SUM(CASE WHEN pnl IS NOT NULL THEN pnl ELSE 0 END) AS total_pnl,
+                        COUNT(*) AS total_trades,
+                        SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN pnl < 0 THEN 1 ELSE 0 END) AS losses,
+                        COUNT(DISTINCT bot_name) AS bots
+                    FROM trades
+                    WHERE mode = ?
+                      AND pnl IS NOT NULL
+                      AND created_at >= datetime('now', '-7 days')
+                    GROUP BY market_id, question
+                    HAVING total_trades > 0
+                    ORDER BY total_pnl DESC
+                    LIMIT 10
+                """, (mode,)).fetchall()
+            
+            if not markets_data:
+                return "📊 <b>Relatório 7 dias</b>\n\n<i>Nenhuma trade lucrativa nos últimos 7 dias.</i>"
+            
+            message = f"📊 <b>Trades Mais Lucrativas (7 dias) - {mode.upper()}</b>\n"
+            message += f"📅 <b>Atualizado:</b> {self.get_current_time_brt()}\n\n"
+            
+            total_pnl_all = 0.0
+            
+            for m in markets_data:
+                question = m["question"]
+                total_pnl = float(m["total_pnl"] or 0)
+                total_trades = m["total_trades"]
+                wins = m["wins"] or 0
+                losses = m["losses"] or 0
+                bots = m["bots"] or 0
+                
+                total_pnl_all += total_pnl
+                
+                message += f"💹 <b>{question}</b>\n"
+                message += f"   💰 P&L 7d: {self.format_currency(total_pnl)}\n"
+                message += f"   🤖 Bots: <code>{bots}</code>\n"
+                message += f"   🎯 Trades: <code>{total_trades}</code> ({wins}W {losses}L)\n\n"
+            
+            message += f"📈 <b>P&L Somado (Top {len(markets_data)} trades):</b> {self.format_currency(total_pnl_all)}\n"
+            
+            return message
+        
+        except Exception as e:
+            return f"❌ Erro ao gerar relatório 7 dias: {str(e)}"
     
     def handle_resumo(self, user_id: str) -> str:
         """Handle /resumo command - Show general summary."""

@@ -9,7 +9,7 @@ import config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def fetch_all_markets(max_pages=8):
+def fetch_all_markets(max_pages=20):
     """Busca mercados ativos, priorizando futuros"""
     all_markets = []
     page = 0
@@ -20,8 +20,7 @@ def fetch_all_markets(max_pages=8):
         now = datetime.now(timezone.utc)
         # Buscar mercados que ainda não expiraram (a partir de hoje)
         start_date = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-        # Limite de 45 dias no futuro
-        future_date = (now + timedelta(days=45)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        future_date = (now + timedelta(days=180)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         while page < max_pages:
             url = "https://gamma-api.polymarket.com/markets"
@@ -181,13 +180,13 @@ def filter_markets(markets):
     # LISTA NEGRA: Se tiver uma destas, morre na hora (Segurança extra)
     BLOCK_KEYWORDS = [
         # Política
-        'trump', 'biden', 'harris', 'election', 'poll', 'vote', 'senate', 'governor',
-        # Desporto (Expandido para matar o Jordan Spieth)
-        'nba', 'nfl', 'nhl', 'mlb', 'soccer', 'cup', 'game', 'tournament', 'win the', 'championship', 'masters',
-        # Pop Culture / Memes
-        'taylor swift', 'oscar', 'grammy', 'movie', 'gta', 'gta vi', 'rockstar',
-        # Outros
-        'launch', 'airdrop'  # Evita eventos binários de Crypto que não seguem gráfico
+        'trump', 'biden', 'harris', 'election', 'poll', 'vote',
+        # Desporto
+        'nba', 'nfl', 'nhl', 'mlb', 'soccer', 'cup', 'game',
+        # Pop Culture (Onde o Ethan Hawke mora)
+        'actor', 'oscar', 'academy award', 'best picture',
+        # Macro (Se quiser tirar os Juros do Fed que travam o RSI)
+        'fed rate', 'cut', 'happen in', 'recession'
     ]
 
     logging.info("Filtering markets with financial whitelist/blacklist criteria:")
