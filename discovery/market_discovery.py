@@ -1,8 +1,7 @@
 import os
+import base64
 import logging
 import json
-import base64
-import time
 import requests
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
@@ -13,10 +12,12 @@ import config
 
 logger = logging.getLogger(__name__)
 
+
 class MarketDiscovery:
     """
-    Motor de descoberta de mercados consolidado (v3.1+)
-    Usa Gamma API para mercados longos + CLOB API para Up or Down de curto prazo.
+    Motor de descoberta de mercados v3.1
+    - Gamma API para mercados de longo prazo
+    - CLOB API para mercados Up or Down de curto prazo (15min/1h)
     """
 
     def __init__(self,
@@ -33,9 +34,9 @@ class MarketDiscovery:
         self.enable_politics = enable_politics
         self.enable_sports   = enable_sports
 
-        self.min_volume    = min_volume    if min_volume    is not None else getattr(config, "MIN_MARKET_VOLUME",  50000)
-        self.min_liquidity = min_liquidity if min_liquidity is not None else getattr(config, "MIN_LIQUIDITY",       0.0)
-        self.max_spread    = max_spread    if max_spread    is not None else getattr(config, "MAX_MARKET_SPREAD",   0.05)
+        self.min_volume    = min_volume    if min_volume    is not None else getattr(config, "MIN_MARKET_VOLUME", 50000)
+        self.min_liquidity = min_liquidity if min_liquidity is not None else getattr(config, "MIN_LIQUIDITY", 0.0)
+        self.max_spread    = max_spread    if max_spread    is not None else getattr(config, "MAX_MARKET_SPREAD", 0.05)
 
         self.KEYWORDS = {
             "crypto": [
@@ -59,12 +60,12 @@ class MarketDiscovery:
             "weather", "temperature", "earthquake", "hurricane"
         ]
 
-    # ------------------------------------------------------------------
-    # CLOB API — mercados Up or Down de curto prazo
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------------ #
+    #  CLOB API — mercados Up or Down                                      #
+    # ------------------------------------------------------------------ #
 
     def _normalize_clob_market(self, m: Dict[str, Any]) -> Dict[str, Any]:
-        """Normaliza campos da CLOB API para o formato do filtro"""
+        """Normaliza campos da CLOB API para o formato esperado pelo filtro."""
         m["slug"]    = m.get("market_slug", m.get("slug", ""))
         m["endDate"] = m.get("end_date_iso", "")
         m["active"]  = m.get("active", False)
@@ -72,7 +73,6 @@ class MarketDiscovery:
         m.setdefault("volume", 0)
         m.setdefault("liquidity", 0)
 
-        # Spread implícito via preços dos tokens (Up + Down deve somar ~1.0)
         tokens = m.get("tokens", [])
         if len(tokens) == 2:
             try:
@@ -85,49 +85,54 @@ class MarketDiscovery:
         else:
             m["spread"] = 1.0
 
+        # current_price = preço do token YES
+        if tokens:
+            try:
+                yes_tok = next((t for t in tokens if (t.get("outcome") or "").lower() == "up"), tokens[0])
+                m["current_price"] = float(yes_tok.get("price", 0.5) or 0.5)
+            except Exception:
+                m["current_price"] = 0.5
+
         return m
 
     def _find_active_clob_offset(self, headers: Dict) -> Optional[int]:
         """
-        Busca binária para achar o offset com mercados Up or Down ativos.
-        Em fev/2026 os mercados ficam por volta de offset 400k-600k.
-        Usa busca binária para encontrar rapidamente (max ~10 requests).
+        Busca binária para achar offset com mercados Up or Down aceitando ordens.
+        Mercados recentes ficam em offsets altos (400k-700k em fev/2026).
         """
-        # Primeiro acha o teto (último offset com dados válidos)
+        # Passo 1: acha o fim dos dados com passos de 100k
+        logger.info("  Localizando offset ativo na CLOB API...")
         lo, hi = 300000, 1000000
-        last_valid = None
+        last_with_data = 300000
 
-        # Passo 1: acha o fim dos dados com passos grandes
-        logger.info("  Localizando limite superior dos dados CLOB...")
         for offset in range(300000, 1000000, 100000):
             cursor = base64.b64encode(str(offset).encode()).decode()
             try:
-                r = requests.get("https://clob.polymarket.com/markets", params={
-                    "limit": 10, "next_cursor": cursor
-                }, headers=headers, timeout=10)
+                r = requests.get("https://clob.polymarket.com/markets",
+                                 params={"limit": 10, "next_cursor": cursor},
+                                 headers=headers, timeout=10)
                 data = r.json().get("data", []) if r.status_code == 200 else []
                 if not data:
                     hi = offset
                     logger.info(f"  Fim dos dados em offset ~{offset}")
                     break
-                last_valid = offset
+                last_with_data = offset
                 lo = offset
             except Exception:
                 break
 
-        if last_valid is None:
-            return None
+        hi = min(hi, last_with_data + 100000)
 
-        # Passo 2: busca binária entre lo e hi para achar mercados accepting_orders=True
+        # Passo 2: busca binária entre lo e hi
         logger.info(f"  Busca binária entre {lo} e {hi}...")
         best = None
-        for _ in range(12):  # max 12 iterações = suficiente para qualquer range
+        for _ in range(12):
             mid = (lo + hi) // 2
             cursor = base64.b64encode(str(mid).encode()).decode()
             try:
-                r = requests.get("https://clob.polymarket.com/markets", params={
-                    "limit": 200, "next_cursor": cursor
-                }, headers=headers, timeout=15)
+                r = requests.get("https://clob.polymarket.com/markets",
+                                 params={"limit": 200, "next_cursor": cursor},
+                                 headers=headers, timeout=15)
                 if r.status_code != 200:
                     hi = mid
                     continue
@@ -139,60 +144,46 @@ class MarketDiscovery:
                 accepting = [m for m in data
                              if m.get("accepting_orders")
                              and "up or down" in (m.get("question") or "").lower()]
-                logger.info(f"  Offset {mid}: {len(data)} mercados, {len(accepting)} up/down aceitando ordens")
+                logger.info(f"  Offset {mid}: {len(data)} mercados, {len(accepting)} up/down ativos")
 
                 if accepting:
                     best = mid
-                    hi = mid  # tenta achar ainda mais cedo
+                    hi = mid
                 else:
-                    # Sem ativos aqui — pode estar antes ou depois
-                    # Checa se os mercados são do passado ou futuro pelo endDate
-                    sample_date = data[0].get("end_date_iso", "") if data else ""
-                    if sample_date and sample_date < datetime.now(timezone.utc).strftime("%Y-%m-%d"):
-                        lo = mid  # mercados aqui são do passado, vai para frente
+                    sample_date = (data[0].get("end_date_iso") or "") if data else ""
+                    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    if sample_date and sample_date < now_str:
+                        lo = mid
                     else:
                         hi = mid
-
             except Exception as e:
-                logger.warning(f"  Busca binária erro offset {mid}: {e}")
+                logger.warning(f"  Erro offset {mid}: {e}")
                 hi = mid
 
-            if hi - lo < 1000:
+            if hi - lo < 500:
                 break
 
-        # Se não achou com accepting_orders, retorna o melhor offset com dados recentes
-        if best is None:
-            best = lo
-            logger.info(f"  Nenhum up/down ativo encontrado na busca binária, usando offset {best}")
-
-        return best
+        return best if best is not None else lo
 
     def fetch_clob_updown_markets(self) -> List[Dict[str, Any]]:
-        """
-        Busca mercados 'Up or Down' ativos na CLOB API.
-        A Gamma API não indexa esses mercados — eles só existem aqui.
-        """
-        headers = {"User-Agent": "PolymarketBotArena/3.0"}
+        """Busca mercados Up or Down ativos na CLOB API."""
+        headers = {"User-Agent": "PolymarketBotArena/3.1"}
         found = []
 
         logger.info("Buscando mercados Up or Down na CLOB API...")
-
         start_offset = self._find_active_clob_offset(headers)
         if start_offset is None:
-            logger.warning("  Não foi possível localizar offset ativo na CLOB. Tente ajustar probe_offsets.")
+            logger.warning("  Não foi possível localizar offset ativo.")
             return []
 
         logger.info(f"  Varrendo a partir do offset {start_offset}...")
-
         cursor = base64.b64encode(str(start_offset).encode()).decode()
-        pages_scanned = 0
-        MAX_PAGES = 8  # 8 * 1000 = 8000 mercados máximo
 
-        while pages_scanned < MAX_PAGES:
+        for page in range(8):  # máx 8 * 1000 = 8000 mercados
             try:
-                r = requests.get("https://clob.polymarket.com/markets", params={
-                    "limit": 1000, "next_cursor": cursor
-                }, headers=headers, timeout=20)
+                r = requests.get("https://clob.polymarket.com/markets",
+                                 params={"limit": 1000, "next_cursor": cursor},
+                                 headers=headers, timeout=20)
                 if r.status_code != 200:
                     break
                 resp = r.json()
@@ -209,29 +200,28 @@ class MarketDiscovery:
                 for m in updown_active:
                     found.append(self._normalize_clob_market(m))
 
-                logger.info(f"  Página {pages_scanned+1}: {len(data)} mercados, {len(updown_active)} up/down aceitando ordens")
+                logger.info(f"  Página {page+1}: {len(data)} mercados, {len(updown_active)} up/down ativos")
 
                 if not next_cursor or next_cursor == cursor or not data:
                     break
                 cursor = next_cursor
-                pages_scanned += 1
 
             except Exception as e:
-                logger.warning(f"  Erro ao coletar página CLOB: {e}")
+                logger.warning(f"  Erro página CLOB: {e}")
                 break
 
         logger.info(f"  Total Up or Down ativos (CLOB): {len(found)}")
         return found
 
-    # ------------------------------------------------------------------
-    # Gamma API — mercados de longo prazo
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------------ #
+    #  Gamma API — mercados de longo prazo                                 #
+    # ------------------------------------------------------------------ #
 
     def fetch_active_markets(self, max_pages: int = 20) -> List[Dict[str, Any]]:
-        """Busca mercados ativos: Gamma API (longo prazo) + CLOB API (Up or Down)"""
+        """Gamma API (longo prazo) + CLOB API (Up or Down curto prazo)."""
         all_markets = []
         page = 0
-        headers = {"User-Agent": "PolymarketBotArena/3.0"}
+        headers = {"User-Agent": "PolymarketBotArena/3.1"}
 
         try:
             logger.info("Fetching active markets from Gamma Markets API...")
@@ -240,19 +230,14 @@ class MarketDiscovery:
             future_date = (now + timedelta(days=180)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
             while page < max_pages:
-                url = "https://gamma-api.polymarket.com/markets"
                 params = {
-                    "limit": 100,
-                    "offset": page * 100,
-                    "endDateMin": start_date,
-                    "endDateMax": future_date,
-                    "active": "true",
-                    "closed": "false",
-                    "archived": "false",
-                    "orderBy": "liquidity",
-                    "orderDirection": "desc"
+                    "limit": 100, "offset": page * 100,
+                    "endDateMin": start_date, "endDateMax": future_date,
+                    "active": "true", "closed": "false", "archived": "false",
+                    "orderBy": "liquidity", "orderDirection": "desc"
                 }
-                response = requests.get(url, params=params, headers=headers, timeout=15)
+                response = requests.get("https://gamma-api.polymarket.com/markets",
+                                        params=params, headers=headers, timeout=15)
                 response.raise_for_status()
                 data = response.json()
                 if not data:
@@ -262,9 +247,9 @@ class MarketDiscovery:
                     break
                 page += 1
 
-            logger.info(f"Gamma API: {len(all_markets)} mercados buscados.")
+            logger.info(f"Gamma API: {len(all_markets)} mercados.")
 
-            # CLOB API — Up or Down de curto prazo
+            # CLOB — Up or Down de curto prazo
             if self.enable_crypto:
                 clob_markets = self.fetch_clob_updown_markets()
                 existing_slugs = {m.get("slug", "") for m in all_markets}
@@ -284,9 +269,9 @@ class MarketDiscovery:
             logger.error(f"Failed to fetch markets: {e}")
             return []
 
-    # ------------------------------------------------------------------
-    # Classificação e filtros
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------------ #
+    #  Classificação e filtros                                             #
+    # ------------------------------------------------------------------ #
 
     def calculate_spread(self, market: Dict[str, Any]) -> float:
         api_spread = market.get("spread")
@@ -308,14 +293,10 @@ class MarketDiscovery:
         question = (market.get("question") or "").lower()
         category = (market.get("category") or "").lower()
         tags     = [t.lower() for t in (market.get("tags_list") or market.get("tags") or [])]
-
         for cat, keywords in self.KEYWORDS.items():
-            if any(k in question for k in keywords):
-                return cat
-            if any(k in category for k in keywords):
-                return cat
-            if tags and any(k in " ".join(tags) for k in keywords):
-                return cat
+            if any(k in question for k in keywords): return cat
+            if any(k in category for k in keywords): return cat
+            if tags and any(k in " ".join(tags) for k in keywords): return cat
         return "unknown"
 
     def is_short_term_crypto(self, market: Dict[str, Any]) -> bool:
@@ -324,19 +305,14 @@ class MarketDiscovery:
         tags     = [t.lower() for t in (market.get("tags_list") or market.get("tags") or [])]
         combined = title + " " + slug + " " + " ".join(tags)
 
-        short_term_kws = [
-            '5 min', '5 minutes', '15 min', '15 minutes', '5m', '15m',
-            '1h', '4h', 'next 5', 'next 15', 'up or down', 'updown', 'up-or-down',
-            'recurring'
-        ]
-        crypto_kws = [
-            'bitcoin', 'btc', 'ethereum', 'eth', 'solana', 'sol',
-            'xrp', 'ripple', 'bnb', 'avax', 'doge', 'matic', 'crypto'
-        ]
+        short_term_kws = ['5 min', '5 minutes', '15 min', '15 minutes', '5m', '15m',
+                          '1h', '4h', 'next 5', 'next 15', 'up or down', 'updown',
+                          'up-or-down', 'recurring']
+        crypto_kws = ['bitcoin', 'btc', 'ethereum', 'eth', 'solana', 'sol',
+                      'xrp', 'ripple', 'bnb', 'avax', 'doge', 'matic', 'crypto']
 
-        has_short_term = any(kw in combined for kw in short_term_kws)
-        has_crypto     = any(c  in combined for c  in crypto_kws)
-        return has_short_term and has_crypto
+        return (any(kw in combined for kw in short_term_kws) and
+                any(c  in combined for c  in crypto_kws))
 
     def filter_markets(self, markets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         qualified = []
@@ -352,7 +328,7 @@ class MarketDiscovery:
             try:
                 question = (market.get("question") or "").lower()
 
-                # Blocklist (exceto mercados up or down)
+                # Blocklist (exceto Up or Down)
                 if "up or down" not in question:
                     if any(k in question for k in self.BLOCK_KEYWORDS):
                         continue
@@ -363,27 +339,23 @@ class MarketDiscovery:
                 spread    = self.calculate_spread(market)
                 category  = self.classify_market(market)
 
-                # Mercados Up or Down da CLOB: aceitando ordens = filtro relaxado
+                # Mercados Up or Down da CLOB: accepting_orders=True → aceita direto
                 if self.is_short_term_crypto(market):
-                    accepting = market.get("accepting_orders", False)
-                    if accepting:
-                        # Já filtrado na coleta — aceita direto
+                    if market.get("accepting_orders", False):
                         market["mapped_category"] = "crypto"
                         qualified.append(market)
                         short_term_count += 1
-                        logger.info(f"✅ Up or Down ativo: {question[:60]}")
+                        logger.info(f"✅ Up or Down ativo: {question[:65]}")
                         continue
-                    else:
-                        # Veio da Gamma API com volume/liquidity conhecidos
-                        if volume >= 300 and liquidity >= 30 and spread <= 0.25:
-                            market["mapped_category"] = "crypto"
-                            qualified.append(market)
-                            short_term_count += 1
-                            continue
-                        else:
-                            logger.debug(f"❌ Short-term rejeitado: '{question[:55]}' "
-                                         f"Vol:{volume:.0f} Liq:{liquidity:.0f} Spread:{spread:.2%}")
-                            continue
+                    # Veio da Gamma (tem volume/liq)
+                    if volume >= 300 and liquidity >= 30 and spread <= 0.25:
+                        market["mapped_category"] = "crypto"
+                        qualified.append(market)
+                        short_term_count += 1
+                        continue
+                    logger.debug(f"❌ Short-term rejeitado: '{question[:55]}' "
+                                 f"Vol:{volume:.0f} Liq:{liquidity:.0f} Spread:{spread:.2%}")
+                    continue
 
                 # Filtros padrão
                 if volume    < self.min_volume:    continue
@@ -402,26 +374,41 @@ class MarketDiscovery:
 
             except Exception as e:
                 logger.error(f"Error filtering market: {e}")
-                continue
 
         qualified.sort(key=lambda x: float(x.get("liquidity", 0) or 0), reverse=True)
-        logger.info(f"Qualificados: {len(qualified)} total ({short_term_count} Up or Down curto prazo)")
+        logger.info(f"Found {len(qualified)} qualified markets "
+                    f"({short_term_count} Up or Down curto prazo).")
         return qualified
 
     def run(self) -> List[Dict[str, Any]]:
-        raw_markets = self.fetch_active_markets()
-        qualified   = self.filter_markets(raw_markets)
-        logger.info(f"Found {len(qualified)} qualified markets.")
-        return qualified
+        raw = self.fetch_active_markets()
+        return self.filter_markets(raw)
 
 
 def save_markets(markets: List[Dict[str, Any]], filename: str = "qualified_markets.json"):
     try:
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(markets, f, indent=2)
-        logger.info(f"Saved to {filename}")
+        logger.info(f"Saved {len(markets)} markets to {filename}")
     except Exception as e:
         logger.error(f"Failed to save: {e}")
+
+
+def run_scan_and_save():
+    """Wrapper de compatibilidade para arena.py."""
+    try:
+        discovery = MarketDiscovery(
+            enable_crypto   = os.getenv("ENABLE_CRYPTO",   "true").lower()  == "true",
+            enable_finance  = os.getenv("ENABLE_FINANCE",  "true").lower()  == "true",
+            enable_politics = os.getenv("ENABLE_POLITICS", "false").lower() == "true",
+            enable_sports   = os.getenv("ENABLE_SPORTS",   "false").lower() == "true",
+        )
+        markets = discovery.run()
+        save_markets(markets)
+        return True
+    except Exception as e:
+        logging.error(f"run_scan_and_save error: {e}")
+        return False
 
 
 if __name__ == "__main__":

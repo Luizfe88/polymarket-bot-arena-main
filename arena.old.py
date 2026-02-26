@@ -23,7 +23,6 @@ from strategies.bot_meanrev_sl import MeanRevSLBot
 from strategies.bot_meanrev_tp import MeanRevTPBot
 from strategies.bot_orderflow import OrderflowBot
 from strategies.arbitrage_bot import ArbitrageBot
-from strategies.bot_updown import UpDownBot
 from signals.price_feed import get_feed as get_price_feed
 from signals.orderflow import get_feed as get_orderflow_feed
 from copytrading.tracker import WalletTracker
@@ -105,24 +104,16 @@ def create_default_bots():
         pass
     active = db.get_active_bots()
     if active:
-        # Se os bots carregados não incluírem 'updown', força a recriação do zero
-        # para garantir que os novos bots UpDown sejam inicializados.
-        has_updown = any(b.get("strategy_type") == "updown" for b in active)
-        if not has_updown:
-            logger.info("Bots antigos detectados sem UpDownBot. Reiniciando pool de bots para incluir UpDown.")
-            # Ignora os bots carregados e cai no bloco 'return' padrão abaixo
-            pass
-        else:
-            try:
-                max_bots = getattr(config, "NUM_BOTS", 5)
-                # Prioriza configs mais recentes por geração e created_at
-                active = sorted(
-                    active,
-                    key=lambda r: (int(r.get("generation", 0) or 0), str(r.get("created_at", ""))),
-                    reverse=True
-                )[:max_bots]
-            except Exception:
-                active = active[:getattr(config, "NUM_BOTS", 5)]
+        try:
+            max_bots = getattr(config, "NUM_BOTS", 5)
+            # Prioriza configs mais recentes por geração e created_at
+            active = sorted(
+                active,
+                key=lambda r: (int(r.get("generation", 0) or 0), str(r.get("created_at", ""))),
+                reverse=True
+            )[:max_bots]
+        except Exception:
+            active = active[:getattr(config, "NUM_BOTS", 5)]
         bot_classes = {
             "momentum": MomentumBot,
             "mean_reversion": MeanRevBot,
@@ -132,18 +123,10 @@ def create_default_bots():
             "hybrid": HybridBot,
             "orderflow": OrderflowBot,
             "arbitrage": ArbitrageBot,
-            "updown": UpDownBot,
         }
         bots = []
         for cfg in active:
-            # Se a estratégia não estiver no mapa, pula ou usa MomentumBot como fallback
-            # Mas o fallback silencioso pode estar mascarando o problema se updown foi salvo com outro nome
-            strategy_type = cfg.get("strategy_type", "momentum")
-            if strategy_type == "updown" and "updown" not in bot_classes:
-                 # Isso não deveria acontecer com a correção acima, mas por segurança
-                 bot_classes["updown"] = UpDownBot
-                 
-            cls = bot_classes.get(strategy_type, MomentumBot)
+            cls = bot_classes.get(cfg["strategy_type"], MomentumBot)
             params = cfg["params"]
             if isinstance(params, str):
                 import json as _j
@@ -154,14 +137,14 @@ def create_default_bots():
                 generation=cfg["generation"],
                 lineage=cfg.get("lineage"),
             ))
-        if bots and has_updown:
+        if bots:
             return bots
 
     return [
-        UpDownBot(name="updown-v1", generation=0),
-        UpDownBot(name="updown-v2", generation=0),
         MomentumBot(name="momentum-v1", generation=0),
         HybridBot(name="hybrid-v1", generation=0),
+        MeanRevBot(name="meanrev-v1", generation=0),
+        MeanRevSLBot(name="meanrev-sl-v1", generation=0),
         OrderflowBot(name="orderflow-v1", generation=0),
     ]
 
@@ -189,7 +172,6 @@ def create_evolved_bot(winner, loser_type, gen_number):
         "hybrid": HybridBot,
         "orderflow": OrderflowBot,
         "arbitrage": ArbitrageBot,
-        "updown": UpDownBot,
     }
 
     default_params_map = {
@@ -201,7 +183,6 @@ def create_evolved_bot(winner, loser_type, gen_number):
         "hybrid": HYBRID_DEFAULTS,
         "orderflow": ORDERFLOW_DEFAULTS,
         "arbitrage": ARBITRAGE_DEFAULTS,
-        "updown": UpDownBot.DEFAULT_PARAMS if hasattr(UpDownBot, 'DEFAULT_PARAMS') else {},
     }
 
     # Start with the target strategy's defaults
@@ -1218,8 +1199,6 @@ def main_loop(bots, api_key):
                     return "sol"
                 elif any(term in q for term in ["xrp", "ripple"]):
                     return "xrp"
-                elif any(term in q for term in ["btc", "bitcoin"]):
-                    return "btc"
                 return None
             
             # Get signals for each crypto type found in markets
@@ -1351,32 +1330,15 @@ def main_loop(bots, api_key):
                     signal = winner["signal"]
                     
                     try:
-                        # Executa o trade
-                        # IMPORTANTE: bot.execute chama self.execute_trade que chama execution_engine.execute_trade
-                        # O bot.execute espera 'suggested_amount' no signal.
-                        # O execution_engine.execute_trade espera amount, price, side.
-                        
-                        # Vamos garantir que o sinal tenha os campos certos
-                        # E que o bot.execute esteja usando a API correta
-                        
                         result = bot.execute(signal, market)
-                        
                         if result.get("success"):
-                            # Marca como executado para este bot E para o mercado
+                            # Marca como executado para este bot E para o mercado (via verificação inicial do loop)
                             key = (bot.name, market_id)
                             executed.add(key)
                             new_trades += 1
-                            
-                            # Log formatado
-                            amt = 0.0
-                            try:
-                                amt = float(signal.get("suggested_amount") or 0.0)
-                            except: pass
-                            
+                            amt = float(signal.get("suggested_amount") or 0.0)
                             amt_s = f"{amt:.4f}" if amt < 0.01 else f"{amt:.2f}"
-                            q_text = market.get('question', '')[:50]
-                            
-                            logger.info(f"[{bot.name}] 🏆 WON EXCLUSIVE TRADE: {signal['side'].upper()} ${amt_s} (conf={winner['confidence']:.2f}) on {q_text}")
+                            logger.info(f"[{bot.name}] 🏆 WON EXCLUSIVE TRADE: {signal['side'].upper()} ${amt_s} (conf={winner['confidence']:.2f}) on {market.get('question', '')[:50]}")
                             
                             # Os outros candidatos perderam a oportunidade
                             for loser in candidates[1:]:
@@ -1384,9 +1346,9 @@ def main_loop(bots, api_key):
                                 
                         else:
                             # Se falhou, talvez devesse tentar o próximo? 
+                            # Por simplicidade, assumimos que se o melhor falhou, o mercado está ruim/erro
                             skip_cache[(bot.name, market_id)] = now_ts
                             logger.debug(f"[{bot.name}] Trade failed on {market_id}: {result.get('reason')}")
-                            
                     except Exception as e:
                         logger.error(f"[{bot.name}] Error executing on {market_id}: {e}")
 

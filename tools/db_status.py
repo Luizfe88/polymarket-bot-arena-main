@@ -15,7 +15,13 @@ def summarize(db_path: Path):
         "SELECT COUNT(*) c FROM trades WHERE outcome IN ('win','loss','exit_tp','exit_sl','expired')"
     ).fetchone()["c"]
     pnl = cur.execute("SELECT COALESCE(SUM(pnl), 0) s FROM trades WHERE outcome IS NOT NULL").fetchone()["s"]
-    return f"{db_path.name}: total={total} pending={pending} resolved={resolved} pnl={float(pnl):+.2f}"
+    
+    # List active bots
+    bots = []
+    if "active_bots" in tables:
+        bots = [r["bot_name"] for r in cur.execute("SELECT bot_name FROM active_bots").fetchall()]
+    
+    return f"{db_path.name}: total={total} pending={pending} resolved={resolved} pnl={float(pnl):+.2f} bots={bots}"
 
 
 def main():

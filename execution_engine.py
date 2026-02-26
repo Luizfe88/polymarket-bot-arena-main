@@ -272,193 +272,57 @@ class ExecutionEngine:
         
         return results
     
-    def execute_single_order(self, market_data: dict, side: str, size: float,
-                           token_id: str, client_func) -> dict:
-        """
-        Execute a single order with optimal pricing and cost tracking
-        
-        Args:
-            market_data: Current market data
-            side: "buy" or "sell"
-            size: Order size in shares
-            token_id: Token ID for the market
-            client_func: Function to place the order (from polymarket_client)
+def execute_trade(bot_name: str, market_id: str, side: str, amount: float,
+                  price: float = None, order_type: str = "market", api_key: str = None) -> dict:
+    """
+    Executa um trade via Simmer API ou Polymarket CLOB.
+    Função de compatibilidade para o arena.py.
+    """
+    try:
+        # Se estiver em modo paper, simula execução perfeita
+        if config.get_current_mode() == "paper":
+            import random
             
-        Returns:
-            Order execution result with cost breakdown
-        """
-        start_time = time.time()
-        
-        try:
-            # Calculate optimal price
-            price = self.calculate_optimal_order_price(market_data, side, size)
-            
-            # Validate order size
-            if size < 0.01:
-                return {"success": False, "error": "Order size too small"}
-            
-            if size > self.config.max_order_size:
-                return {"success": False, "error": "Order size exceeds maximum"}
-            
-            # Execute the order
-            if side.lower() == "buy":
-                result = client_func(token_id, "yes", size * price)  # Convert shares to USDC
-            else:
-                result = client_func(token_id, "no", size * price)
-            
-            execution_time = time.time() - start_time
-            
-            # Calculate costs
-            cost_breakdown = self.calculate_total_cost(
-                size, price, self.config.order_type, market_data, execution_time
-            )
-            
-            # Enhance result with cost information
-            if result.get("success"):
-                result["cost_breakdown"] = {
-                    "spread_cost": cost_breakdown.spread_cost,
-                    "taker_fee": cost_breakdown.taker_fee,
-                    "maker_fee": cost_breakdown.maker_fee,
-                    "gas_cost": cost_breakdown.gas_cost,
-                    "slippage_cost": cost_breakdown.slippage_cost,
-                    "total_cost": cost_breakdown.total_cost,
-                    "total_cost_pct": cost_breakdown.total_cost_pct,
-                    "execution_time": execution_time
-                }
+            # Simula fill price com slippage pequeno
+            slippage = random.uniform(0.001, 0.005)
+            # Ensure price is float
+            try:
+                base_price = float(price) if price is not None else 0.50
+            except (ValueError, TypeError):
+                base_price = 0.50
                 
-                logger.info(f"Order executed: {side} {size}@{price}, "
-                          f"Total cost: ${cost_breakdown.total_cost:.3f} "
-                          f"({cost_breakdown.total_cost_pct:.2%})")
+            fill_price = base_price
             
-            return result
-            
-        except Exception as e:
-            logger.error(f"Order execution failed: {e}")
-            return {"success": False, "error": str(e)}
-    
-    def should_execute_trade(self, expected_value: float, cost_breakdown: CostBreakdown) -> bool:
-        """
-        Determine if a trade should be executed based on expected value vs costs
-        
-        Args:
-            expected_value: Expected value of the trade
-            cost_breakdown: Cost breakdown for the trade
-            
-        Returns:
-            True if trade should be executed
-        """
-        # V3.0 requirement: minimum +4.5-6% EV per trade after costs
-        min_ev_after_costs = 0.045
-        
-        net_ev = expected_value - cost_breakdown.total_cost_pct
-        
-        if net_ev < min_ev_after_costs:
-            logger.info(f"Trade rejected: Net EV {net_ev:.2%} < minimum {min_ev_after_costs:.2%}")
-            return False
-        
-        # Additional check: don't trade if costs exceed 50% of expected value
-        if cost_breakdown.total_cost_pct > expected_value * 0.5:
-            logger.info(f"Trade rejected: Costs {cost_breakdown.total_cost_pct:.2%} > 50% of EV {expected_value:.2%}")
-            return False
-        
-        return True
-    
-    def get_execution_recommendation(self, market_data: dict, side: str, size: float) -> Dict:
-        """
-        Get execution recommendation for a trade
-        
-        Args:
-            market_data: Current market data
-            side: "buy" or "sell"
-            size: Intended trade size
-            
-        Returns:
-            Dictionary with execution recommendation
-        """
-        try:
-            # Calculate optimal price and costs
-            price = self.calculate_optimal_order_price(market_data, side, size)
-            cost_breakdown = self.calculate_total_cost(size, price, self.config.order_type, market_data)
-            
-            # Determine best execution strategy
-            if size > 500:  # Large orders
-                if self.config.urgency == "patient":
-                    recommended_strategy = "TWAP"
-                else:
-                    recommended_strategy = "ICEBERG"
-            elif size > 100:  # Medium orders
-                recommended_strategy = "POST_ONLY"
-            else:  # Small orders
-                recommended_strategy = "POST_ONLY"
+            if side == "buy":
+                fill_price = fill_price * (1 + slippage)
+            else:
+                fill_price = fill_price * (1 - slippage)
+                
+            # Ensure amount is float
+            try:
+                trade_amount = float(amount)
+            except (ValueError, TypeError):
+                logger.error(f"Invalid amount type: {amount} ({type(amount)})")
+                return {"success": False, "reason": "Invalid amount"}
+
+            shares = trade_amount / fill_price
             
             return {
-                "recommended_strategy": recommended_strategy,
-                "optimal_price": price,
-                "estimated_cost_pct": cost_breakdown.total_cost_pct,
-                "estimated_cost_usd": cost_breakdown.total_cost,
-                "market_impact": self._estimate_market_impact(market_data, size),
-                "execution_time_estimate": self._estimate_execution_time(size, recommended_strategy)
+                "success": True,
+                "order_id": f"paper_{int(time.time()*1000)}",
+                "size": shares,
+                "avg_price": fill_price,
+                "fee": 0.0,
+                "status": "filled"
             }
             
-        except Exception as e:
-            logger.error(f"Error getting execution recommendation: {e}")
-            return {
-                "recommended_strategy": "POST_ONLY",
-                "optimal_price": market_data.get("current_price", 0.5),
-                "estimated_cost_pct": 0.01,
-                "estimated_cost_usd": 0.01,
-                "market_impact": "low",
-                "execution_time_estimate": 30
-            }
-    
-    def _estimate_market_impact(self, market_data: dict, size: float) -> str:
-        """Estimate market impact of the trade"""
-        bids = market_data.get("bids", [])
-        asks = market_data.get("asks", [])
+        # Se estiver em modo live, usa o cliente Polymarket real
+        # TODO: Implementar live execution quando necessário
+        return {"success": False, "reason": "Live execution not implemented yet"}
         
-        if not bids or not asks:
-            return "unknown"
-        
-        # Calculate total liquidity within 1% of mid price
-        best_bid = float(bids[0]["price"])
-        best_ask = float(asks[0]["price"])
-        mid_price = (best_bid + best_ask) / 2
-        
-        liquidity_1pct = 0
-        for level in bids + asks:
-            price = float(level["price"])
-            if abs(price - mid_price) / mid_price <= 0.01:  # Within 1%
-                liquidity_1pct += float(level["size"])
-        
-        # Estimate impact based on size vs available liquidity
-        impact_ratio = size / liquidity_1pct if liquidity_1pct > 0 else 1.0
-        
-        if impact_ratio < 0.05:
-            return "low"
-        elif impact_ratio < 0.15:
-            return "medium"
-        else:
-            return "high"
-    
-    def _estimate_execution_time(self, size: float, strategy: str) -> int:
-        """Estimate execution time in seconds"""
-        base_times = {
-            "POST_ONLY": 30,
-            "LIMIT": 45,
-            "MARKET": 15,
-            "TWAP": 120,
-            "ICEBERG": 180
-        }
-        
-        base_time = base_times.get(strategy, 30)
-        
-        # Adjust for size
-        if size > 1000:
-            base_time *= 2
-        elif size > 500:
-            base_time *= 1.5
-        
-        return base_time
+    except Exception as e:
+        logger.error(f"Trade execution error: {e}")
+        return {"success": False, "reason": str(e)}
 
 
 # Global execution engine instance

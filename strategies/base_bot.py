@@ -47,105 +47,78 @@ class BaseBot:
     def execute(self, signal: dict, market: dict) -> dict:
         """
         Execute a trade based on the signal.
-        This is a simulation/placeholder. In a real system, this would call an execution engine.
         """
-        if signal["action"] == "hold":
-            return {"success": False, "reason": "Signal is hold"}
+        if signal["action"] == "hold" or signal["action"] == "skip":
+            return {"success": False, "reason": "Signal is hold/skip"}
             
         amount = signal.get("suggested_amount", 0.0)
+        # Proteção contra tipo inválido de amount
+        try:
+            amount = float(amount)
+        except (ValueError, TypeError):
+            # Tenta limpar se vier como string formatada (ex: "$10.00")
+            if isinstance(amount, str):
+                import re
+                amount = float(re.sub(r'[^\d.]', '', amount) or 0.0)
+            else:
+                return {"success": False, "reason": f"Invalid amount type: {amount} ({type(amount)})"}
+
         if amount <= 0:
             return {"success": False, "reason": "Zero amount"}
 
-        # Simulate execution success
-        # In a real bot, this would place an order
-        # For the arena, we return success so the arena can log/track it
-        # The arena code actually handles the DB recording and API calls (via execution_engine),
-        # but it expects the bot object to have an 'execute' method if it calls bot.execute()
-        # Wait, looking at arena.py:
-        # result = bot.execute(signal, market)
-        # So yes, we need this method.
-        
-        # However, arena.py seems to rely on an external execution_engine usually?
-        # Let's check how it was before.
-        # It seems the previous bots had an execute method.
-        
-        # We'll implement a basic one that returns success, 
-        # but we should probably delegate to the arena's execution logic if possible.
-        # Actually, looking at the logs, arena.py calls bot.execute(signal, market).
-        
-        # Let's try to import the global execution engine if needed, 
-        # or just return the signal payload enriched with status.
-        
-        from execution_engine import execute_trade
-        
-        # We need the API key... but BaseBot doesn't have it stored by default?
-        # The arena loop has 'api_key'.
-        # But bot.execute() signature in arena is just (signal, market).
-        # This implies the bot should know how to execute or it's a wrapper.
-        
-        # WAIT! The error log says: 'MomentumBot' object has no attribute 'execute'
-        # So we just need to add this method to BaseBot.
-        
-        # Let's implement a wrapper that calls the global execute_trade
-        # We might need to fetch the API key from config or context.
-        # For now, let's assume the arena passes the key or we get it from config.
-        
-        import config
-        # We might need to pass the key in __init__ or use a global one.
-        # Or, we can change arena.py to call execute_trade directly?
-        # No, better to fix the bot class to be compatible.
-        
-        # If we look at how it was done before (I can't see the deleted files),
-        # but typically it would call execution_engine.
-        
         try:
-            # We need to get the API key. 
-            # In the new architecture, maybe we should pass it?
-            # For now, let's try to load it or use a default if in paper mode.
-            api_key = None
-            if hasattr(self, '_api_key_slot'):
-                 # We might need to load keys based on slot
-                 pass
-            
-            # Actually, arena.py loop has:
-            # result = bot.execute(signal, market)
-            # And then:
-            # if result.get("success"):
-            #    executed.add(key)
-            #    new_trades += 1
-            
-            # It seems the actual API call happens inside bot.execute.
-            
-            # Let's import the execution function
+            # Importa aqui para evitar dependência circular no topo
             from execution_engine import execute_trade
-            
-            # We need to pass the API key.
-            # If we don't have it, maybe execute_trade handles it?
-            # execute_trade(bot_name, signal, market, api_key=None) -> dict
-            
-            # We will try to find the api key from the bot's slot if it exists
-            api_key = None
-            if hasattr(self, '_api_key_slot'):
-                import json
-                try:
-                    with open(config.SIMMER_BOT_KEYS_PATH) as f:
-                        keys = json.load(f)
-                        api_key = keys.get(self._api_key_slot)
-                except:
-                    pass
-            
-            # Fallback to default key if not found
-            if not api_key:
-                try:
-                    with open(config.SIMMER_API_KEY_PATH) as f:
-                        api_key = f.read().strip()
-                except:
-                    pass
+            import config
+            import json
+            import os
 
-            return execute_trade(self.name, signal, market, api_key)
+            # Tenta carregar a chave de API correta para este bot
+            api_key = None
+            
+            # Se o bot tiver um slot de chave atribuído (seja via atributo ou inferido pelo nome)
+            # Mas o BaseBot padrão não tem self._api_key_slot definido explicitamente na init.
+            # O arena.py gerencia isso externamente na maioria das vezes, mas aqui estamos dentro do bot.
+            
+            # Tenta carregar do arquivo de chaves de bots
+            try:
+                if os.path.exists(config.SIMMER_BOT_KEYS_PATH):
+                    with open(config.SIMMER_BOT_KEYS_PATH, 'r') as f:
+                        keys = json.load(f)
+                        # Tenta encontrar a chave pelo nome do bot se o slot não estiver definido
+                        # Mas o arquivo mapeia slot_id -> key.
+                        # Precisamos saber qual slot este bot ocupa.
+                        # O arena.py sabe. O bot não sabe seu slot nativamente.
+                        pass
+            except Exception:
+                pass
+            
+            # Fallback para a chave padrão (Single Account Mode)
+            if not api_key and os.path.exists(config.SIMMER_API_KEY_PATH):
+                with open(config.SIMMER_API_KEY_PATH, 'r') as f:
+                    api_key = f.read().strip()
+
+            # Chama a função de execução global
+            # execute_trade(bot_name, market_id, side, amount, price=None, order_type="market", api_key=None)
+            
+            market_id = market.get("condition_id") or market.get("id")
+            side = signal.get("side", "yes") # Default to yes if missing
+            
+            # Preço limite opcional (se o bot definir 'limit_price')
+            # Se não, usa None (Market Order simulada)
+            price = signal.get("limit_price") 
+            
+            return execute_trade(
+                bot_name=self.name,
+                market_id=market_id,
+                side=side,
+                amount=amount,
+                price=price,
+                api_key=api_key
+            )
             
         except Exception as e:
-            return {"success": False, "reason": f"Execution error: {e}"}
+            return {"success": False, "reason": f"Execution error in BaseBot: {e}"}
 
     def get_performance(self, hours=24):
         """
