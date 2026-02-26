@@ -1,7 +1,7 @@
 """Bot 2: Mean Reversion strategy."""
 
 import math
-from bots.base_bot import BaseBot
+from strategies.base_bot import BaseBot
 
 DEFAULT_PARAMS = {
     "lookback_candles": 20,
@@ -53,7 +53,7 @@ class MeanRevBot(BaseBot):
         std = math.sqrt(variance) if variance > 0 else 1
         return (prices[-1] - mean) / std
 
-    def analyze(self, market: dict, signals: dict) -> dict:
+    def analyze(self, market: dict, signals: dict, kelly_fraction=None) -> dict:
         """Bet against overextended moves."""
         prices = signals.get("prices", [])
         lookback = self.strategy_params["lookback_candles"]

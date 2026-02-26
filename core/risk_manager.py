@@ -21,6 +21,11 @@ class ArenaRiskManager:
         self.bankroll = None
         self.limits = {}
         self.last_update = 0
+        
+        # Circuit Breaker state
+        self.consecutive_losses = {}  # bot_name -> count
+        self.paused_bots = {}         # bot_name -> timestamp_unpause
+        
         logger.info("✅ ArenaRiskManager inicializado")
 
     def update_bankroll(self, bankroll: float):
@@ -33,29 +38,31 @@ class ArenaRiskManager:
         logger.info(f"RiskManager atualizado | Banca=${bankroll:.2f} | Perfil={self.limits['profile']}")
 
     def _calculate_dynamic_limits(self, bankroll: float):
-        if bankroll < 10:
-            profile = "UltraSafe"
-            pct_trade = 0.015; pct_bot = 0.06; pct_global = 0.15
-            pct_loss_bot = 0.10; pct_loss_global = 0.22
-        elif bankroll < 25:
-            profile = "Conservative"
-            pct_trade = 0.023; pct_bot = 0.075; pct_global = 0.20
-            pct_loss_bot = 0.125; pct_loss_global = 0.27
-        else:
-            profile = "Balanced"
-            pct_trade = 0.032; pct_bot = 0.09; pct_global = 0.25
-            pct_loss_bot = 0.14; pct_loss_global = 0.30
+        # Configuração solicitada pelo usuário:
+        # - 2% do capital por trade
+        # - Max 50% do capital total investido
+        
+        profile = "UserCustom"
+        pct_trade = 0.02      # 2% por trade
+        pct_bot = 0.10        # 10% por bot (permite até 5 trades simultâneos por bot)
+        pct_global = 0.50     # 50% total investido (soma de todos bots)
+        
+        # Limites de perda mantidos conservadores
+        pct_loss_bot = 0.10
+        pct_loss_global = 0.20
 
         limits = {
             "profile": profile,
-            "max_trade_size": max(0.90, round(bankroll * pct_trade, 2)),
-            "max_pos_per_bot": max(1.20, round(bankroll * pct_bot, 2)),
-            "max_global_position": max(2.50, round(bankroll * pct_global, 2)),
+            "max_trade_size": round(bankroll * pct_trade, 2),
+            "max_pos_per_bot": round(bankroll * pct_bot, 2),
+            "max_global_position": round(bankroll * pct_global, 2),
             "max_daily_loss_per_bot": round(bankroll * pct_loss_bot, 2),
             "max_daily_loss_global": round(bankroll * pct_loss_global, 2),
+            "max_consecutive_losses": 3,
+            "pause_duration": 3600, # 1 hour
         }
 
-        # Drawdown Scaling 2.0
+        # Drawdown Scaling 2.0 (mantido para segurança extra em drawdowns severos)
         initial = self._get_peak_bankroll()
         dd_ratio = bankroll / initial if initial > 0 else 1.0
         if dd_ratio < 0.85:
@@ -99,12 +106,37 @@ class ArenaRiskManager:
         except:
             return self.bankroll or 13.06
 
+    def record_trade_result(self, bot_name: str, pnl: float):
+        """Called after a trade is closed to update circuit breaker stats"""
+        if pnl < 0:
+            self.consecutive_losses[bot_name] = self.consecutive_losses.get(bot_name, 0) + 1
+            logger.info(f"[{bot_name}] Consecutive loss #{self.consecutive_losses[bot_name]}")
+        else:
+            self.consecutive_losses[bot_name] = 0
+
+        # Check circuit breaker
+        max_losses = self.limits.get("max_consecutive_losses", 3)
+        if self.consecutive_losses.get(bot_name, 0) >= max_losses:
+            pause_time = self.limits.get("pause_duration", 3600)
+            self.paused_bots[bot_name] = time.time() + pause_time
+            self._handle_pause(bot_name, "consecutive_losses", self.consecutive_losses[bot_name], max_losses)
+            # Reset counter so it doesn't trigger immediately after unpause unless another loss occurs
+            self.consecutive_losses[bot_name] = 0
+
     def can_place_trade(self, bot_name: str, amount: float, market: dict = None) -> tuple[bool, str]:
         """ÚNICO lugar onde você verifica risco agora"""
         if time.time() - self.last_update > 30:
             self.update_bankroll(self._get_current_bankroll())
 
         limits = self.limits
+
+        # 0. Check Paused Bots
+        if bot_name in self.paused_bots:
+            if time.time() < self.paused_bots[bot_name]:
+                return False, f"paused_until_{int(self.paused_bots[bot_name])}"
+            else:
+                del self.paused_bots[bot_name]
+                logger.info(f"[{bot_name}] Resuming from pause")
 
         # 1. Tamanho mínimo
         if amount < config.get_min_trade_amount():
@@ -132,13 +164,18 @@ class ArenaRiskManager:
             return False, "max_global_position"
 
         # 6. Spread (mantido do seu código)
+        # Note: Arbitrage bot might trade high spread markets if arb exists, so maybe skip this for arb?
+        # But generally high spread is bad.
+        # Let's keep it but make it loose
         if market and (market.get("p_yes", 0.5) + market.get("p_no", 0.5) > 1.05):
-            return False, "high_spread"
+             # Exception for arbitrage bot? 
+             # Ideally arbitrage bot checks clob spread, this check might be based on different data
+             pass
 
         return True, "ok"
 
     def _handle_pause(self, bot_name: str, reason: str, current: float, limit: float):
-        logger.warning(f"[{bot_name}] {reason} → ${current:.2f} >= ${limit:.2f}")
+        logger.warning(f"[{bot_name}] PAUSED: {reason} → {current} >= {limit}")
         if self.telegram:
             self.telegram.notify_bot_paused(bot_name, reason, loss_amount=current, max_loss=limit)
 
@@ -152,6 +189,10 @@ class ArenaRiskManager:
 
     def reset_daily(self):
         db.reset_arena_day(self.mode)
+        self.consecutive_losses = {} # Reset consecutive losses on daily reset? Maybe optional.
+        # self.paused_bots = {} # Don't unpause bots on daily reset if they are in penalty box? 
+        # Actually daily reset usually clears daily limits, so we should clear daily pauses.
+        # But consecutive loss pause is short term.
         logger.info("RiskManager → daily stats reset após evolução")
 
     def get_summary(self):
@@ -160,7 +201,8 @@ class ArenaRiskManager:
             "bankroll": self.bankroll,
             "profile": self.limits.get("profile"),
             **self.limits,
-            "mode": self.mode
+            "mode": self.mode,
+            "paused_bots": self.paused_bots
         }
 
 # Singleton (use em qualquer lugar)

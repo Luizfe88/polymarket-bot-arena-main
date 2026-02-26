@@ -1,6 +1,6 @@
 """Bot 1: Momentum / Trend Following strategy."""
 
-from bots.base_bot import BaseBot
+from strategies.base_bot import BaseBot
 
 DEFAULT_PARAMS = {
     "lookback_candles": 5,
@@ -22,7 +22,7 @@ class MomentumBot(BaseBot):
             lineage=lineage,
         )
 
-    def analyze(self, market: dict, signals: dict) -> dict:
+    def analyze(self, market: dict, signals: dict, kelly_fraction=None) -> dict:
         """Trade in the direction of short-term price momentum."""
         prices = signals.get("prices", [])
         if len(prices) < self.strategy_params["lookback_candles"]:

@@ -15,7 +15,7 @@ from enum import Enum
 
 import config
 import db
-from bots.base_bot import BaseBot
+from strategies.base_bot import BaseBot
 
 logger = logging.getLogger(__name__)
 

@@ -6,11 +6,16 @@ import websocket
 from threading import Thread
 from typing import Dict, Optional
 import logging
+import math
+
+import config
+import polymarket_client
+from strategies.base_bot import BaseBot
 
 logger = logging.getLogger(__name__)
 
 class OrderFlowBot:
-    """OrderFlow-Imbalance-v1 PRO - WebSocket + Whale Detection"""
+    """OrderFlow-Imbalance-v1 PRO 2026 - WebSocket oficial + Whale Detection"""
     
     def __init__(self, config, polymarket_client):
         self.name = "orderflow-v1"
@@ -20,55 +25,67 @@ class OrderFlowBot:
         self.recent_trades = []
         self.last_update = {}
         
-        # Parâmetros PRO
+        # Parâmetros PRO (ajustados para edge real)
         self.imbalance_threshold = 0.38
         self.trade_flow_threshold = 0.68
         self.whale_multiplier = 5.0
         self.min_liquidity = 180_000
-        self.min_edge = 0.028  # 2.8% após fees
+        self.min_edge = 0.028   # 2.8% após fees
         
+        self.ws = None
         self.ws_thread = None
-        self.running = False
+        self.running = True
         self.start_websocket()
 
     def start_websocket(self):
-        """Inicia WebSocket em thread separada (não trava o arena)"""
         def ws_runner():
             def on_message(ws, message):
                 try:
                     data = json.loads(message)
-                    if data.get("event_type") == "book":
+                    event_type = data.get("event_type")
+                    
+                    if event_type == "book":
                         asset_id = data.get("asset_id")
                         if asset_id:
-                            self.orderbook_cache[asset_id] = data
+                            self.orderbook_cache[asset_id] = data.get("book", data)
                             self.last_update[asset_id] = time.time()
-                    elif data.get("event_type") == "trade":
+                    elif event_type == "trade":
                         self.recent_trades.append(data)
-                        if len(self.recent_trades) > 300:
+                        if len(self.recent_trades) > 400:
                             self.recent_trades.pop(0)
                 except:
                     pass
+
+            def on_open(ws):
+                logger.info("✅ OrderFlow-v1 conectado ao WebSocket oficial da Polymarket")
+                # Subscribe em todos os mercados que o arena está usando
+                ws.send(json.dumps({
+                    "type": "market",
+                    "assets_ids": ["*"],   # "*" = todos (ou liste os token_ids)
+                    "custom_feature_enabled": True
+                }))
 
             def on_error(ws, error):
                 logger.warning(f"OrderFlow WS error: {error}")
 
             def on_close(ws, *args):
-                logger.info("OrderFlow WS closed - reconnecting in 5s...")
-                time.sleep(5)
-                self.start_websocket()
+                logger.info("OrderFlow WS fechado - reconectando em 5s...")
+                if self.running:
+                    time.sleep(5)
+                    self.start_websocket()
 
-            ws_url = "wss://ws.polymarket.com/market"  # canal oficial 2026
+            ws_url = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
             self.ws = websocket.WebSocketApp(
                 ws_url,
+                on_open=on_open,
                 on_message=on_message,
                 on_error=on_error,
                 on_close=on_close
             )
-            self.ws.run_forever(ping_interval=20)
+            self.ws.run_forever(ping_interval=20, ping_timeout=10)
 
         self.ws_thread = Thread(target=ws_runner, daemon=True)
         self.ws_thread.start()
-        logger.info("✅ OrderFlow-v1 WebSocket iniciado (real-time)")
 
     def get_orderbook(self, token_id: str) -> Optional[Dict]:
         """Fallback REST se WS ainda não recebeu o market"""
@@ -101,7 +118,7 @@ class OrderFlowBot:
         """% de volume de buys vs sells nos últimos 8 minutos"""
         if not self.recent_trades:
             return 0.5
-        recent = [t for t in self.recent_trades if time.time() - t.get("timestamp", 0) < 480]
+        recent = [t for t in self.recent_trades if time.time() - float(t.get("timestamp", 0) or 0) < 480]
         if not recent:
             return 0.5
         
@@ -131,7 +148,7 @@ class OrderFlowBot:
 
             # Fórmula PRO
             p_yes = (
-                market.get("current_price", 0.50) +
+                float(market.get("current_price", 0.50) or 0.50) +
                 (imbalance * 0.42) +
                 ((flow - 0.5) * 0.31) +
                 (whale_bonus * 0.15)
@@ -146,39 +163,36 @@ class OrderFlowBot:
     def decide(self, market: Dict):
         """Decisão final (compatível com seu arena)"""
         p_yes = self.get_probability(market)
-        mkt_price = market.get("current_price", 0.50)
+        mkt_price = float(market.get("current_price", 0.50) or 0.50)
         
         edge = abs(p_yes - mkt_price)
-        ev_yes = (p_yes - mkt_price) * 0.98  # após ~2% fees
         
-        if edge > self.min_edge and ev_yes > 0.015:
-            size = self.config.get("position_size", 50)  # ajuste no seu RiskManager
-            return {
+        # Se p_yes > price, então EV_yes > 0 se (p_yes - price) > cost
+        # Se p_yes < price, então p_no > (1-price), EV_no > 0
+        
+        # Lógica simplificada de decisão
+        if p_yes > mkt_price + self.min_edge:
+             return {
                 "side": "Yes",
-                "size": size,
                 "price": p_yes,
-                "reason": f"OrderFlow edge {edge:.1%} | imbalance {self.calculate_imbalance(self.get_orderbook(market.get('clobTokenIds', [''])[0])):.2f}"
+                "reason": f"OrderFlow edge YES {edge:.1%}",
+                "confidence": min(0.95, 0.5 + edge * 2)
             }
-        
-        # Lógica para NO (simétrica)
-        p_no = 1 - p_yes
-        ev_no = (p_no - (1 - mkt_price)) * 0.98
-        if edge > self.min_edge and ev_no > 0.015:
-            return {
+        elif p_yes < mkt_price - self.min_edge:
+             return {
                 "side": "No",
-                "size": self.config.get("position_size", 50),
-                "price": p_no,
-                "reason": "OrderFlow edge (NO)"
+                "price": 1 - p_yes,
+                "reason": f"OrderFlow edge NO {edge:.1%}",
+                "confidence": min(0.95, 0.5 + edge * 2)
             }
         
-        return None  # skip
+        return None
 
     def stop(self):
         self.running = False
         if self.ws:
             self.ws.close()
-from bots.base_bot import BaseBot
-import math
+
 
 DEFAULT_PARAMS = {
     "position_size_pct": 0.05,
@@ -187,8 +201,10 @@ DEFAULT_PARAMS = {
     "volume_weight": 0.3,
 }
 
-
+# Wrapper for Arena compatibility
 class OrderflowBot(BaseBot):
+    _logic_instance = None
+
     def __init__(self, name="orderflow-v1", params=None, generation=0, lineage=None):
         super().__init__(
             name=name,
@@ -197,48 +213,37 @@ class OrderflowBot(BaseBot):
             generation=generation,
             lineage=lineage,
         )
+        # Singleton logic instance to avoid multiple websockets
+        if OrderflowBot._logic_instance is None:
+            # Config fake ou real, dependendo do que OrderFlowBot espera
+            # Aqui passamos um dict vazio pois OrderFlowBot usa self.config.get("position_size")
+            # mas vamos controlar o size no wrapper.
+            OrderflowBot._logic_instance = OrderFlowBot({}, polymarket_client.get_client())
 
-    def analyze(self, market: dict, signals: dict) -> dict:
-        of = signals.get("orderflow") or {}
-        market_price = market.get("current_price", 0.5) or 0.5
-        try:
-            market_price = float(market_price)
-        except (TypeError, ValueError):
-            market_price = 0.5
-        p = of.get("current_probability", market_price) or market_price
-        try:
-            p = float(p)
-        except (TypeError, ValueError):
-            p = market_price
-        p = max(0.01, min(0.99, p))
-        edge = p - market_price
-        vol24h = of.get("volume_24h", 0) or 0
-        try:
-            vol24h = float(vol24h)
-        except (TypeError, ValueError):
-            vol24h = 0.0
-        vol_sig = min(0.4, math.log1p(max(0.0, vol24h)) / 10.0)
-        warnings = of.get("warnings", []) or []
-        penalty = 0.05 * len(warnings)
-        w_edge = self.strategy_params.get("edge_weight", 0.7)
-        w_vol = self.strategy_params.get("volume_weight", 0.3)
-        confidence = max(0.0, min(0.95, (abs(edge) * 2.0) * w_edge + vol_sig * w_vol - penalty))
-        side = "yes" if edge > 0 else "no"
-        import config
-        amount = config.get_max_position() * self.strategy_params.get("position_size_pct", 0.05)
-        min_conf = float(self.strategy_params.get("min_confidence", 0.55))
-        if confidence < min_conf:
+    def analyze(self, market: dict, signals: dict, kelly_fraction=None) -> dict:
+        # Use internal logic instead of external signals
+        decision = OrderflowBot._logic_instance.decide(market)
+        
+        if not decision:
             return {
                 "action": "hold",
-                "side": side,
-                "confidence": confidence,
-                "reasoning": "low orderflow confidence",
+                "side": "yes",
+                "confidence": 0.0,
+                "reasoning": "no orderflow edge",
                 "suggested_amount": 0.0,
             }
+
+        # Map decision to Arena format
+        side = decision["side"].lower() # "yes" or "no"
+        confidence = decision.get("confidence", 0.6)
+        reason = decision.get("reason", "orderflow edge")
+        
+        amount = config.get_max_position() * self.strategy_params.get("position_size_pct", 0.05)
+        
         return {
             "action": "buy",
             "side": side,
             "confidence": confidence,
-            "reasoning": f"orderflow prob={p:.3f} mkt={market_price:.3f} edge={abs(edge):.3f} vol={vol24h:.0f}",
+            "reasoning": reason,
             "suggested_amount": float(amount),
         }

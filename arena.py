@@ -16,17 +16,18 @@ import db
 import learning
 import edge_model
 from core.risk_manager import risk_manager
-from bots.bot_momentum import MomentumBot
-from bots.bot_mean_rev import MeanRevBot
-from bots.bot_hybrid import HybridBot
-from bots.bot_meanrev_sl import MeanRevSLBot
-from bots.bot_meanrev_tp import MeanRevTPBot
-from bots.bot_orderflow import OrderflowBot
+from strategies.bot_momentum import MomentumBot
+from strategies.bot_mean_rev import MeanRevBot
+from strategies.bot_hybrid import HybridBot
+from strategies.bot_meanrev_sl import MeanRevSLBot
+from strategies.bot_meanrev_tp import MeanRevTPBot
+from strategies.bot_orderflow import OrderflowBot
+from strategies.arbitrage_bot import ArbitrageBot
 from signals.price_feed import get_feed as get_price_feed
 from signals.orderflow import get_feed as get_orderflow_feed
 from copytrading.tracker import WalletTracker
 from copytrading.copier import TradeCopier
-import market_discovery
+from discovery import market_discovery
 from logging_config import setup_logging_with_brt
 from evolution_integration import evolution_integration, on_trade_resolved
 import telegram_bot
@@ -121,6 +122,7 @@ def create_default_bots():
             "sentiment": OrderflowBot,
             "hybrid": HybridBot,
             "orderflow": OrderflowBot,
+            "arbitrage": ArbitrageBot,
         }
         bots = []
         for cfg in active:
@@ -155,10 +157,11 @@ def create_evolved_bot(winner, loser_type, gen_number):
     then mutates. This prevents KeyError when winner and loser have
     different param schemas.
     """
-    from bots.bot_momentum import DEFAULT_PARAMS as MOMENTUM_DEFAULTS
-    from bots.bot_mean_rev import DEFAULT_PARAMS as MEANREV_DEFAULTS
-    from bots.bot_hybrid import DEFAULT_PARAMS as HYBRID_DEFAULTS
-    from bots.bot_orderflow import DEFAULT_PARAMS as ORDERFLOW_DEFAULTS
+    from strategies.bot_momentum import DEFAULT_PARAMS as MOMENTUM_DEFAULTS
+    from strategies.bot_mean_rev import DEFAULT_PARAMS as MEANREV_DEFAULTS
+    from strategies.bot_hybrid import DEFAULT_PARAMS as HYBRID_DEFAULTS
+    from strategies.bot_orderflow import DEFAULT_PARAMS as ORDERFLOW_DEFAULTS
+    from strategies.arbitrage_bot import DEFAULT_PARAMS as ARBITRAGE_DEFAULTS
 
     bot_classes = {
         "momentum": MomentumBot,
@@ -168,6 +171,7 @@ def create_evolved_bot(winner, loser_type, gen_number):
         "sentiment": OrderflowBot,
         "hybrid": HybridBot,
         "orderflow": OrderflowBot,
+        "arbitrage": ArbitrageBot,
     }
 
     default_params_map = {
@@ -178,6 +182,7 @@ def create_evolved_bot(winner, loser_type, gen_number):
         "sentiment": ORDERFLOW_DEFAULTS,
         "hybrid": HYBRID_DEFAULTS,
         "orderflow": ORDERFLOW_DEFAULTS,
+        "arbitrage": ARBITRAGE_DEFAULTS,
     }
 
     # Start with the target strategy's defaults
@@ -573,7 +578,7 @@ def is_5min_market(question):
         if ap2 == 'am' and h2 == 12: h2 = 0
         diff = (h2 * 60 + m2) - (h1 * 60 + m1)
         if diff < 0: diff += 24 * 60
-        return diff == 5
+        return diff == 5 or diff == 15
     return False
 
 
@@ -679,10 +684,10 @@ def is_5min_market_obj(market: dict) -> bool:
     dt = _parse_resolves_at(market.get("resolves_at"))
     if dt:
         tte = (dt - datetime.now(timezone.utc).replace(tzinfo=None)).total_seconds()
-        return config.TRADE_MIN_TTE_SECONDS <= tte <= config.TRADE_MAX_TTE_SECONDS
+        return config.TRADE_MIN_TTE_SECONDS <= tte <= 3600  # Expandido para 1h para incluir 15min markets
 
     question = market.get("question", "")
-    if not is_5min_market(question):
+    if not is_short_term_market(question):
         return False
 
     end_dt = _parse_question_end_time_utc(question)
@@ -1222,14 +1227,68 @@ def main_loop(bots, api_key):
                 
                 # Get crypto type for this market and use appropriate signals
                 crypto_type = get_crypto_type(market.get("question", ""))
-                price_signals = all_price_signals.get(crypto_type, {}) if crypto_type else {}
+                
+                # Se não for crypto, pula
+                if not crypto_type:
+                    continue
+                
+                # Regra: "não entrar nos que tem mais de 2 para fechar"
+                # Interpretação: Só operar se o mercado começa em breve.
+                # Se o mercado termina em > 15 min, ele está a 3+ candles de distância.
+                # Limite: 15 min (900s) a partir de agora para o FIM do mercado.
+                try:
+                    q = market.get("question", "")
+                    # Apenas aplica regra para mercados de curto prazo (Up or Down)
+                    if "up or down" in q.lower():
+                        end_dt = _parse_question_end_time_utc(q)
+                        if end_dt:
+                            # Calcular tempo até o fim
+                            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+                            time_to_end = (end_dt - now_utc).total_seconds()
+                            
+                            # Se termina daqui a mais de 15 min (3 candles de 5min), ignora
+                            if time_to_end > 15 * 60:
+                                # logger.debug(f"Skipping distant market {q} (ends in {time_to_end/60:.1f} min)")
+                                continue
+                except Exception:
+                    pass
+
+                price_signals = all_price_signals.get(crypto_type, {})
+                # Para orderflow, precisamos passar a chave da API correta, mas aqui estamos iterando bots depois
+                # Vamos usar a chave do primeiro bot apenas para leitura de sinais globais se necessário
+                # Na verdade, orderflow_feed.get_signals pode usar uma chave padrão ou do bot
+                # O método original chamava get_signals(market_id, api_key) onde api_key é a default
+                of_signals = orderflow_feed.get_signals(market_id, api_key)
+                
                 combined_signals = {**price_signals, **of_signals}
 
+                # Rastrear quais bots já entraram neste mercado NESTE ciclo ou anteriormente (se quisermos bloquear totalmente)
+                # O usuário pediu: "não entre no mesmo trade com mais de um bot"
+                # Isso significa que para um dado market_id, apenas UM bot pode ter trade executado.
+                
+                # Verificar se JÁ existe algum trade executado para este mercado por QUALQUER bot
+                market_already_traded = False
+                for (b_name, m_id) in executed:
+                    if m_id == market_id:
+                        market_already_traded = True
+                        break
+                
+                if market_already_traded:
+                    # Se alguém já operou este mercado, ninguém mais opera
+                    continue
+
                 # Each bot trades independently on its own account
+                # Mas agora competem pela exclusividade do trade
+                
+                # Vamos coletar as decisões de todos os bots primeiro
+                candidates = []
+
                 for bot in bots:
                     key = (bot.name, market_id)
+                    # Se este bot já operou (redundante com a verificação acima, mas mantém consistência)
                     if key in executed:
                         continue
+                    
                     last_skip = skip_cache.get(key)
                     if last_skip and (now_ts - last_skip) < skip_retry:
                         continue
@@ -1237,31 +1296,61 @@ def main_loop(bots, api_key):
                     try:
                         # Get dynamic Kelly fraction from risk manager
                         kelly_fraction = risk_manager.get_dynamic_kelly_fraction()
-                        signal = bot.make_decision(market, combined_signals, kelly_fraction=kelly_fraction)
+                        
+                        # Analisa
+                        signal = bot.analyze(market, combined_signals, kelly_fraction=kelly_fraction)
                         decide_count += 1
 
-                        # Skip if bot sees no edge
-                        if signal.get("action") == "skip":
+                        # Se ação for buy, é um candidato
+                        if signal.get("action") == "buy":
+                            candidates.append({
+                                "bot": bot,
+                                "signal": signal,
+                                "confidence": signal.get("confidence", 0)
+                            })
+                        else:
+                            # Loga skip e cacheia
                             skip_count += 1
                             skip_cache[key] = now_ts
                             r = (signal.get("reasoning") or "")[:180]
                             if r:
                                 skip_reasons[r] = skip_reasons.get(r, 0) + 1
-                            continue
 
+                    except Exception as e:
+                        logger.error(f"[{bot.name}] Error analyzing {market_id}: {e}")
+                        skip_cache[key] = now_ts
+                
+                # Se houver candidatos, escolhe o melhor (maior confiança)
+                if candidates:
+                    # Ordena por confiança decrescente
+                    candidates.sort(key=lambda x: x["confidence"], reverse=True)
+                    winner = candidates[0]
+                    
+                    bot = winner["bot"]
+                    signal = winner["signal"]
+                    
+                    try:
                         result = bot.execute(signal, market)
                         if result.get("success"):
+                            # Marca como executado para este bot E para o mercado (via verificação inicial do loop)
+                            key = (bot.name, market_id)
                             executed.add(key)
                             new_trades += 1
                             amt = float(signal.get("suggested_amount") or 0.0)
                             amt_s = f"{amt:.4f}" if amt < 0.01 else f"{amt:.2f}"
-                            logger.info(f"[{bot.name}] {signal['side'].upper()} ${amt_s} (conf={signal['confidence']:.2f}) on {market.get('question', '')[:50]}")
+                            logger.info(f"[{bot.name}] 🏆 WON EXCLUSIVE TRADE: {signal['side'].upper()} ${amt_s} (conf={winner['confidence']:.2f}) on {market.get('question', '')[:50]}")
+                            
+                            # Os outros candidatos perderam a oportunidade
+                            for loser in candidates[1:]:
+                                logger.info(f"[{loser['bot'].name}] 🚫 Blocked by exclusivity rule (conf={loser['confidence']:.2f} < {winner['confidence']:.2f})")
+                                
                         else:
-                            skip_cache[key] = now_ts
+                            # Se falhou, talvez devesse tentar o próximo? 
+                            # Por simplicidade, assumimos que se o melhor falhou, o mercado está ruim/erro
+                            skip_cache[(bot.name, market_id)] = now_ts
                             logger.debug(f"[{bot.name}] Trade failed on {market_id}: {result.get('reason')}")
                     except Exception as e:
-                        logger.error(f"[{bot.name}] Error on {market_id}: {e}")
-                        skip_cache[key] = now_ts
+                        logger.error(f"[{bot.name}] Error executing on {market_id}: {e}")
 
             if new_trades > 0:
                 logger.info(f"Placed {new_trades} new trades this cycle")

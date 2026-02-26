@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 try:
     import db
-    from bots.bot_orderflow import OrderflowBot
+    from strategies.bot_orderflow import OrderflowBot, DEFAULT_PARAMS
     from logging_config import setup_logging_with_brt
     
     # Configura logging

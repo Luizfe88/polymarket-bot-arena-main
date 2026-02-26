@@ -1,8 +1,8 @@
 """Hybrid / Ensemble strategy combining technical signals."""
 
-from bots.base_bot import BaseBot
-from bots.bot_momentum import MomentumBot
-from bots.bot_mean_rev import MeanRevBot
+from strategies.base_bot import BaseBot
+from strategies.bot_momentum import MomentumBot
+from strategies.bot_mean_rev import MeanRevBot
 
 DEFAULT_PARAMS = {
     "momentum_weight": 0.50,
@@ -27,7 +27,7 @@ class HybridBot(BaseBot):
         self._momentum = MomentumBot(name="_internal_mom")
         self._mean_rev = MeanRevBot(name="_internal_mr")
 
-    def analyze(self, market: dict, signals: dict) -> dict:
+    def analyze(self, market: dict, signals: dict, kelly_fraction=None) -> dict:
         """Combine signals from momentum and mean reversion."""
         mom_signal = self._momentum.analyze(market, signals)
         mr_signal = self._mean_rev.analyze(market, signals)

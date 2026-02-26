@@ -8,7 +8,7 @@ from datetime import datetime
 
 import db
 from enhanced_bot_evolution_manager import EnhancedBotEvolutionManager
-from bots.base_bot import BaseBot
+from strategies.base_bot import BaseBot
 
 logger = logging.getLogger(__name__)
 

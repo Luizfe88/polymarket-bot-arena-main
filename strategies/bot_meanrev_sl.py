@@ -7,7 +7,7 @@ Because downside is capped at 25%, this bot trades more aggressively:
 """
 
 import config
-from bots.bot_mean_rev import MeanRevBot, DEFAULT_PARAMS
+from strategies.bot_mean_rev import MeanRevBot, DEFAULT_PARAMS
 
 
 class MeanRevSLBot(MeanRevBot):
@@ -23,7 +23,7 @@ class MeanRevSLBot(MeanRevBot):
         )
         self.strategy_type = "mean_reversion_sl"
 
-    def make_decision(self, market, signals):
+    def make_decision(self, market, signals, kelly_fraction=None):
         """SL bot: more aggressive entries since downside is capped at 25%.
 
         With a 25% stop-loss, max loss per trade is only 25% of the position

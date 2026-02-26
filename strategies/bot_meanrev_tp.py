@@ -10,7 +10,7 @@ Exit logic: early close at 2x via PositionMonitorThread, otherwise hold.
 """
 
 import config
-from bots.bot_mean_rev import MeanRevBot, DEFAULT_PARAMS
+from strategies.bot_mean_rev import MeanRevBot, DEFAULT_PARAMS
 
 
 class MeanRevTPBot(MeanRevBot):
@@ -26,7 +26,7 @@ class MeanRevTPBot(MeanRevBot):
         )
         self.strategy_type = "mean_reversion_tp"
 
-    def make_decision(self, market, signals):
+    def make_decision(self, market, signals, kelly_fraction=None):
         """TP bot: always enter, let the 2x exit do the work.
 
         Never skips a market — every position is an opportunity for the

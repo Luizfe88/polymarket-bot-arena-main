@@ -71,7 +71,7 @@ DB_PATH = Path(_db_env).expanduser() if _db_env else (Path(__file__).parent / "b
 
 # Target Markets: Multiple crypto 5-min up/down markets
 TARGET_MARKET_QUERIES = ["btc", "eth", "sol", "ethereum", "solana", "bitcoin"]  # Search terms for market discovery
-TARGET_MARKET_KEYWORDS = ["5 min", "5-min", "5min", "up or down", "up/down"]
+TARGET_MARKET_KEYWORDS = ["5 min", "5-min", "5min", "15 min", "15-min", "15min", "up or down", "up/down"]
 TARGET_MARKET_NAMES = ["Bitcoin Up or Down", "Ethereum Up or Down", "Solana Up or Down"]  # Alternative market names to search
 BTC_5MIN_MARKET_ID = None  # Will be populated by setup.py
 ETH_5MIN_MARKET_ID = None  # Ethereum market ID
